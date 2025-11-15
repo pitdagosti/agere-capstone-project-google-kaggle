@@ -24,9 +24,8 @@ The competition challenges participants to design and implement advanced **AI Ag
 | [Amos Bocelli](https://www.linkedin.com/in/amos-bocelli-bab86411a/)            | [@Luminare7](https://github.com/Luminare7)    | [amosboc](https://www.kaggle.com/amosboc)                 |
 | []()                                                                           | [@agterzis](https://github.com/agterzis)      | [asteriosterzis](https://www.kaggle.com/asteriosterzis)   |
 
----
 
-# 📁 **Repository Structure**
+## 📁 **Repository Structure**
 
 ```
 project-root/
@@ -41,9 +40,8 @@ project-root/
 └── README.md             # You're reading it!
 ```
 
----
 
-# 🛠️ **Installation**
+## 🛠️ **Installation**
 
 ### **Prerequisites**
 
@@ -67,9 +65,7 @@ conda activate boh
 pip install -r requirements.txt
 ```
 
----
-
-# ▶️ **Usage**
+## ▶️ **Usage**
 
 After installation, you can run the main agent pipeline:
 
@@ -89,9 +85,7 @@ For development mode:
 python -m src.agents.dev_agent
 ```
 
----
-
-# 🧠 **Architecture Overview**
+## 🧠 **Architecture Overview**
 
 > *Add a diagram or a textual summary here.*
 > Se vuoi, posso generare un diagramma in ASCII/Markdown o anche un'immagine.
@@ -104,9 +98,7 @@ Template per questa sezione:
 * Memory or planning components
 * Evaluation loop or reward model (if applicable)
 
----
-
-# 📊 **Evaluation & Metrics**
+## 📊 **Evaluation & Metrics**
 
 > *Optional: fill this when you have results.*
 
@@ -117,9 +109,7 @@ You can include:
 * Qualitative examples of agent reasoning
 * Error analysis
 
----
-
-# 📦 **Deployment (Optional)**
+## 📦 **Deployment (Optional)**
 
 ### Local server / API:
 
@@ -134,16 +124,13 @@ docker build -t boh-agent .
 docker run boh-agent
 ```
 
----
-
-# 📜 **Source Code License**
+## 📜 **Source Code License**
 
 The source code and executable distributions are licensed under the **MIT License**.
 See the full text in the [LICENSE](LICENSE) file.
 
----
 
-# 📄 **Documentation License**
+## 📄 **Documentation License**
 
 Documentation in this repository is licensed under:
 
@@ -153,29 +140,14 @@ Documentation in this repository is licensed under:
 
 More info: [https://creativecommons.org/licenses/by-sa/4.0/](https://creativecommons.org/licenses/by-sa/4.0/)
 
----
 
-# 🤝 **How to Contribute**
+## 🤝 **How to Contribute**
 
 Contributions are welcome!
 Please submit a pull request or open an issue for discussion.
 
----
 
-# ⭐ **Support the Project**
+## ⭐ **Support the Project**
 
 If you find this project useful, consider giving it a **GitHub star**!
 It helps with visibility and supports the authors in the hackathon.
-
----
-
-## Vuoi che lo adatti allo stile **Google Research**, **Hugging Face**, **Meta FAIR**, o **OpenAI**?
-
-Oppure se mi mostri anche solo parte del codice, posso scrivere:
-
-* una **descrizione tecnica accurata**,
-* un **diagramma dell’architettura**,
-* una sezione **Usage** con comandi realistici,
-* e una **Project Description** precisa e convincente.
-
-Dimmi pure!
