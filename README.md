@@ -126,7 +126,7 @@ docker run boh-agent
 
 ## 📜 **Source Code License**
 
-The source code and executable distributions are licensed under the **MIT License**.
+The source code and executable distributions are licensed under the **CC BY-SA 4.0**.
 See the full text in the [LICENSE](LICENSE) file.
 
 
