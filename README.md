@@ -36,7 +36,7 @@ project-root/
 ├── configs/              # Model/agent configuration files
 ├── tests/                # Unit tests, integration tests
 ├── docs/                 # Documentation, diagrams, architecture
-├── LICENSE               # MIT License for source code
+├── LICENSE               # CC-BY-SA 4.0 License for source code
 └── README.md             # You're reading it!
 ```
 
