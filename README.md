@@ -166,16 +166,3 @@ Please submit a pull request or open an issue for discussion.
 
 If you find this project useful, consider giving it a **GitHub star**!
 It helps with visibility and supports the authors in the hackathon.
-
----
-
-## Vuoi che lo adatti allo stile **Google Research**, **Hugging Face**, **Meta FAIR**, o **OpenAI**?
-
-Oppure se mi mostri anche solo parte del codice, posso scrivere:
-
-* una **descrizione tecnica accurata**,
-* un **diagramma dell’architettura**,
-* una sezione **Usage** con comandi realistici,
-* e una **Project Description** precisa e convincente.
-
-Dimmi pure!
