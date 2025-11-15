@@ -9,8 +9,8 @@ The competition challenges participants to design and implement advanced **AI Ag
 
 > *Add here a 3–6 line description of what your AI agent does.*
 
-* Definition the problem the agent solves
-* Description the architecture (LLMs, tools, pipelines, data sources)
+* Definition of the problem the agent solves
+* Description of the architecture (LLMs, tools, pipelines, data sources)
 * Highlight the innovative/unique aspect
 * Mention performance, evaluation strategy, or expected outcomes
 
