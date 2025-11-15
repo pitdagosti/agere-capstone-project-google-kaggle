@@ -20,9 +20,9 @@ The competition challenges participants to design and implement advanced **AI Ag
 | Name                                                                           | GitHub_ID                                     | Kaggle_ID                                                 |
 | ------------------------------------------------------------------------------ | --------------------------------------------- | --------------------------------------------------------- |
 | [Pietro D'Agostino](https://www.linkedin.com/in/pietro-d-agostino-phd/)        | [@pitdagosti](https://github.com/pitdagosti)  | [pietrodagostino](https://www.kaggle.com/pietrodagostino) |
-| [Abdul Basit Memon](https://www.linkedin.com/in/abdul-basit-memon-614961166/)  | [@abm1119](https://github.com/abm1119)        |                                                           |
+| [Abdul Basit Memon](https://www.linkedin.com/in/abdul-basit-memon-614961166/)  | [@abm1119](https://github.com/abm1119)        | [abdulbasit1119](https://www.kaggle.com/abdulbasit1119)   |
 | [Amos Bocelli](https://www.linkedin.com/in/amos-bocelli-bab86411a/)            | [@Luminare7](https://github.com/Luminare7)    | [amosboc](https://www.kaggle.com/amosboc)                 |
-| []()                                                                           | [@agterzis](https://github.com/agterzis)      | [asteriosterzis](https://www.kaggle.com/asteriosterzis)   |
+| Asterios Terzis                                                                | [@agterzis](https://github.com/agterzis)      | [asteriosterzis](https://www.kaggle.com/asteriosterzis)   |
 
 
 ## 📁 **Repository Structure**
