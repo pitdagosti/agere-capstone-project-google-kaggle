@@ -1,21 +1,11 @@
-# **Project BOH**
+# 🧠 AGERE 
 
-**Project BOH** is the solution developed for the **Agents Intensive – Capstone Project** Hackathon, hosted by **Kaggle** in collaboration with **Google**.
-The competition challenges participants to design and implement advanced **AI Agent systems**, integrating reasoning, tool usage, and real-world data interaction to solve complex tasks.
+### Autonomous Multi-Agent Recruitment Orchestrator
 
-🔗 Hackathon page: [https://www.kaggle.com/competitions/agents-intensive-capstone-project/team](https://www.kaggle.com/competitions/agents-intensive-capstone-project/team)
+AGERE (**AGE**ntic **RE**cruiter) is a **hierarchical, parallel multi-agent system** designed to automate the most time-consuming steps of the recruiting pipeline: resume screening, technical assessment generation, culture-fit analysis, candidate Q&A, interview scheduling, and communication drafting.
+A **Human-in-the-Loop** layer ensures that recruiters retain full control over all sensitive actions.
 
-## 🚀 **Goal of the Project**
-
-> *Add here a 3–6 line description of what your AI agent does.*
-
-* Definition of the problem the agent solves
-* Description of the architecture (LLMs, tools, pipelines, data sources)
-* Highlight the innovative/unique aspect
-* Mention performance, evaluation strategy, or expected outcomes
-
-
-## The Team behind BOH
+## The Team
 
 | Name                                                                           | GitHub_ID                                     | Kaggle_ID                                                 |
 | ------------------------------------------------------------------------------ | --------------------------------------------- | --------------------------------------------------------- |
@@ -25,104 +15,132 @@ The competition challenges participants to design and implement advanced **AI Ag
 | [Asterios Terzis](https://www.linkedin.com/in/asterios-terzis-364862277/)      | [@agterzis](https://github.com/agterzis)      | [asteriosterzis](https://www.kaggle.com/asteriosterzis)   |
 
 
-## 📁 **Repository Structure**
+## ⭐ Core Capabilities
+
+### 1. Hierarchical & Parallel Multi-Agent Architecture
+
+A central **Orchestrator** coordinates specialized agents:
+
+* **ResumeScreenerAgent** – parses PDF resumes and performs baseline match checks
+* **TechAssessorAgent** – generates skill-specific coding challenges and validates them using a sandbox
+* **CultureFitAgent** – evaluates soft skills and tone
+* **QnAAgent** – answers candidate questions via RAG on company documents
+* **SchedulerAgent** – books interviews using a real MCP calendar server
+* **CommunicatorAgent** – drafts outreach emails containing challenges and proposed slots
+
+The tech, culture, and Q&A analyses run **in parallel** to minimize latency.
+
+## 🔌 Tooling & Infrastructure
+
+### Model Context Protocol (MCP)
+
+A **real MCP server** (SQLite-backed) manages company calendars. The SchedulerAgent communicates via a compliant MCP client.
+
+### Code Execution Sandbox
+
+The TechAssessor uses a secure execution environment to:
+
+1. Generate a coding challenge tailored to the candidate’s claimed skills
+2. Validate solvability by executing a reference solution
+
+### Retrieval-Augmented Generation (RAG)
+
+A local vectorstore (FAISS/Chroma recommended) powers the QnAAgent, enabling grounded responses using the documents in `data/company_docs/`.
+
+### Human-in-the-Loop (HITL)
+
+Before any email is sent or action is finalized, the workflow pauses. The recruiter reviews:
+
+* candidate summary
+* generated challenge
+* suggested email
+
+Approval resumes the agent cycle.
+
+### Observability
+
+All agent reasoning traces, tool calls, and state transitions are logged for debugging and reproducibility.
+
+## 📁 Repository Structure
 
 ```
-project-root/
-│
-├── src/                  # Source code of the agent(s)
-├── notebooks/            # Experiments, evaluations, prototypes
-├── data/                 # Input data, datasets (if allowed)
-├── configs/              # Model/agent configuration files
-├── tests/                # Unit tests, integration tests
-├── docs/                 # Documentation, diagrams, architecture
-├── LICENSE               # CC-BY-SA 4.0 License for source code
-└── README.md             # You're reading it!
+smart-hire-agent/
+├── .env                        # API Keys
+├── README.md
+├── requirements.txt
+├── main.py                     # Streamlit UI entrypoint
+
+├── mcp_server/
+│   ├── calendar_server.py      # Real MCP server
+│   └── calendar.db             # SQLite calendar DB
+
+├── data/
+│   ├── resumes/                # Uploaded PDFs
+│   └── company_docs/           # RAG knowledge base
+
+├── src/
+│   ├── orchestrator.py         # Central coordinator
+│   ├── agents/
+│   │   ├── screener.py
+│   │   ├── tech_assessor.py
+│   │   ├── culture_fit.py
+│   │   ├── qna_bot.py
+│   │   └── scheduler.py
+│   ├── tools/
+│   │   ├── code_sandbox.py
+│   │   ├── file_reader.py
+│   │   ├── mcp_client.py
+│   │   ├── rag_engine.py
+│   │   └── hitl_interface.py
+│   ├── memory/
+│   │   └── memory_bank.py
+│   └── utils/
+│       └── logger.py
+
+└── tests/
 ```
 
+## 🏗️ How It Works (High-Level Flow)
 
-## 🛠️ **Installation**
+1. Recruiter uploads **resume + job description** via Streamlit
+2. Orchestrator starts a session
+3. Resume screening runs
+4. Parallel block triggers:
 
-### **Prerequisites**
+   * Tech assessment generation + sandbox execution
+   * Culture fit analysis
+   * Candidate Q&A prep via RAG
+5. SchedulerAgent retrieves available interview slots through MCP
+6. CommunicatorAgent drafts the final email
+7. **HITL checkpoint:** Recruiter approves or edits
+8. Email sent and Memory Bank updated
 
-* Python 3.10+
-* pip or conda
-* (Optional) GPU with CUDA for acceleration
+## 🚀 Running Locally
 
-### **Setup**
-
-```bash
-git clone https://github.com/<your-username>/<your-repo>.git
-cd <your-repo>
+```
 pip install -r requirements.txt
 ```
 
-If you use conda:
+Start MCP calendar server:
 
-```bash
-conda create -n boh python=3.10
-conda activate boh
-pip install -r requirements.txt
+```
+python mcp_server/calendar_server.py
 ```
 
-## ▶️ **Usage**
+Start UI:
 
-After installation, you can run the main agent pipeline:
-
-```bash
-python src/main.py --config configs/default.yaml
+```
+streamlit run main.py
 ```
 
-To test individual modules:
+## 📎 Next Steps / Configuration Questions
 
-```bash
-pytest tests/ --verbose
-```
+If you intend to extend or customize this repository, consider:
 
-For development mode:
+* preferred vectorstore (local FAISS vs cloud)
+* strictness of coding challenge validation
+* providing mock resumes + mock policy docs for demos
 
-```bash
-python -m src.agents.dev_agent
-```
-
-## 🧠 **Architecture Overview**
-
-> *Add a diagram or a textual summary here.*
-> Se vuoi, posso generare un diagramma in ASCII/Markdown o anche un'immagine.
-
-Template per questa sezione:
-
-* Overview of the main agent(s)
-* LLM model used (GPT, Gemini, LLaMA, ecc.)
-* Tools implemented (search, code execution, data loaders, environment interactions)
-* Memory or planning components
-* Evaluation loop or reward model (if applicable)
-
-## 📊 **Evaluation & Metrics**
-
-> *Optional: fill this when you have results.*
-
-You can include:
-
-* Benchmarks used
-* Accuracy / score / leaderboard results
-* Qualitative examples of agent reasoning
-* Error analysis
-
-## 📦 **Deployment (Optional)**
-
-### Local server / API:
-
-```bash
-uvicorn src.api:app --reload
-```
-
-### Docker:
-
-```bash
-docker build -t boh-agent .
-docker run boh-agent
-```
 
 ## 📜 **Source Code License**
 
