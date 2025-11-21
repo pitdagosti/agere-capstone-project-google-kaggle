@@ -7,7 +7,7 @@ from google.adk.tools import google_search
 from google.genai import types
 
 # Import custom tools
-from tools import read_cv, list_available_cvs, compare_candidates
+from src.tools import read_cv, list_available_cvs, compare_candidates
 
 # Load environment variables
 from dotenv import load_dotenv

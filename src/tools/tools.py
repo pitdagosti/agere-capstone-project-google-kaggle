@@ -20,7 +20,8 @@ def read_cv(filename: Annotated[str, "Name of the CV file to read and analyze"])
         str: Content of the CV file
     """
     # Check both temp_uploads (for Streamlit uploads) and dummy_files_for_testing (for testing)
-    base_path = Path(__file__).parent.parent
+    # Base path should be the project root (two levels up from src/tools/tools.py)
+    base_path = Path(__file__).parent.parent.parent
     temp_uploads_path = base_path / "temp_uploads" / filename
     dummy_files_path = base_path / "dummy_files_for_testing" / filename
     
@@ -62,7 +63,8 @@ def list_available_cvs() -> str:
     Returns:
         str: List of available CV files
     """
-    base_path = Path(__file__).parent.parent / "dummy_files_for_testing"
+    # Base path should be the project root (three levels up from src/tools/tools.py)
+    base_path = Path(__file__).parent.parent.parent / "dummy_files_for_testing"
     
     if not base_path.exists():
         return "❌ dummy_files_for_testing folder not found"
