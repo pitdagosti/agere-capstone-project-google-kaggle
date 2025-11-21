@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # Import your agents and tools
-from agents import root_agent, InMemoryRunner
+from src.agents import root_agent, InMemoryRunner
 
 # Load environment variables
 load_dotenv()
