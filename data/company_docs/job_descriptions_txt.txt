@@ -1,0 +1,211 @@
+PROLOGWARE SOLUTIONS - JOB DESCRIPTIONS & EVALUATION CRITERIA
+===============================================================
+
+===============================================================
+ROLE 1: MOBILE APP DEVELOPER
+===============================================================
+
+JOB DESCRIPTION:
+- Develop native Android applications using Kotlin/Java in Android Studio
+- Build cross-platform applications using .NET MAUI (C#) in Visual Studio
+- Collaborate with clients to understand requirements and deliver MVPs
+- Implement responsive UI/UX designs and ensure app performance
+- Write clean, maintainable code with proper documentation
+- Participate in code reviews and testing processes
+
+REQUIRED SKILLS:
+- Proficiency in Kotlin/Java or C# (.NET MAUI)
+- Experience with Android Studio or Visual Studio
+- Understanding of mobile UI/UX principles
+- Knowledge of RESTful APIs and backend integration
+- Version control with Git
+- Problem-solving and debugging skills
+
+EVALUATION CRITERIA (100 points total):
+
+Technical Skills (40 points)
+  - Coding proficiency: 20 points
+  - Framework knowledge: 10 points
+  - Problem-solving ability: 10 points
+
+Experience (25 points)
+  - Relevant projects/portfolio: 15 points
+  - Years of experience: 10 points
+
+Communication (15 points)
+  - Clarity of explanations: 8 points
+  - English proficiency: 7 points
+
+Cultural Fit (20 points)
+  - Alignment with startup culture: 10 points
+  - Community-minded attitude: 5 points
+  - Learning mindset: 5 points
+
+MINIMUM PASSING SCORE: 65/100
+
+===============================================================
+ROLE 2: WEB DEVELOPER
+===============================================================
+
+JOB DESCRIPTION:
+- Build responsive websites and web applications from scratch
+- Develop landing pages for e-commerce and personal brands
+- Implement frontend using HTML, CSS, JavaScript, and modern frameworks (React, Vue, etc.)
+- Backend development with Node.js, Python, or PHP
+- Database design and integration (MySQL, PostgreSQL, MongoDB)
+- Ensure website performance, security, and SEO optimization
+
+REQUIRED SKILLS:
+- HTML5, CSS3, JavaScript (ES6+)
+- Experience with at least one modern framework (React, Vue, Angular)
+- Backend development knowledge (Node.js preferred)
+- Database management
+- Responsive design and cross-browser compatibility
+- Basic DevOps knowledge (deployment, hosting)
+
+EVALUATION CRITERIA (100 points total):
+
+Technical Skills (45 points)
+  - Frontend proficiency: 20 points
+  - Backend knowledge: 15 points
+  - Full-stack capability: 10 points
+
+Portfolio Quality (25 points)
+  - Quality of previous work: 15 points
+  - Variety of projects: 10 points
+
+Problem-Solving (15 points)
+  - Technical challenge performance: 15 points
+
+Communication & Collaboration (15 points)
+  - Client interaction skills: 8 points
+  - Team collaboration: 7 points
+
+MINIMUM PASSING SCORE: 65/100
+
+===============================================================
+ROLE 3: AI/ML ENGINEER (GENERATIVE AI SOLUTIONS)
+===============================================================
+
+JOB DESCRIPTION:
+- Design and develop custom knowledge-base chatbots using LLMs
+- Build AI-powered workflow automation agents
+- Integrate AI solutions with client systems and databases
+- Fine-tune and optimize AI models for specific use cases
+- Implement RAG (Retrieval-Augmented Generation) systems
+- Stay updated with latest AI/ML trends and tools
+
+REQUIRED SKILLS:
+- Experience with OpenAI API, Anthropic Claude, or similar LLM APIs
+- Python programming for AI/ML
+- Knowledge of vector databases (Pinecone, ChromaDB, Weaviate)
+- Understanding of prompt engineering and RAG architecture
+- API development and integration
+- Familiarity with LangChain, LlamaIndex, or similar frameworks
+
+EVALUATION CRITERIA (100 points total):
+
+Technical Skills (50 points)
+  - LLM integration expertise: 20 points
+  - Python/AI frameworks: 15 points
+  - System architecture: 15 points
+
+Innovation & Problem-Solving (20 points)
+  - Creative AI solutions: 10 points
+  - Technical challenges: 10 points
+
+Experience (15 points)
+  - Relevant AI projects: 15 points
+
+Communication (15 points)
+  - Ability to explain AI concepts: 8 points
+  - Client-facing skills: 7 points
+
+MINIMUM PASSING SCORE: 70/100
+
+===============================================================
+ROLE 4: MVP DEVELOPMENT CONSULTANT
+===============================================================
+
+JOB DESCRIPTION:
+- Consult with clients to understand their product vision
+- Recommend optimal tech stacks for MVP development
+- Create technical architecture and development roadmap
+- Coordinate between design, development, and client teams
+- Ensure rapid prototyping and iterative development
+- Provide technical guidance and project management
+
+REQUIRED SKILLS:
+- Broad knowledge of multiple tech stacks and frameworks
+- Experience in product development lifecycle
+- Strong consulting and communication skills
+- Project management abilities
+- Understanding of agile/scrum methodologies
+- Business acumen and startup mindset
+
+EVALUATION CRITERIA (100 points total):
+
+Technical Knowledge (30 points)
+  - Breadth of tech stack knowledge: 15 points
+  - Architecture design skills: 15 points
+
+Consulting Skills (30 points)
+  - Client communication: 15 points
+  - Problem discovery: 15 points
+
+Experience (20 points)
+  - Previous MVP projects: 12 points
+  - Startup experience: 8 points
+
+Strategic Thinking (20 points)
+  - Business understanding: 10 points
+  - Decision-making: 10 points
+
+MINIMUM PASSING SCORE: 70/100
+
+===============================================================
+ROLE 5: COMMUNITY MANAGER
+===============================================================
+
+JOB DESCRIPTION:
+- Manage and moderate WhatsApp, Circle, and platform communities
+- Organize and coordinate workshops, webinars, and seminars
+- Curate and update Resources Heaven with new content
+- Engage with community members and facilitate discussions
+- Handle community feedback and improvement suggestions
+- Create content for social media and community platforms
+
+REQUIRED SKILLS:
+- Excellent communication and interpersonal skills
+- Experience in community management or social media
+- Event planning and coordination
+- Content creation and curation
+- Conflict resolution and moderation
+- Passion for technology and education
+
+EVALUATION CRITERIA (100 points total):
+
+Communication Skills (35 points)
+  - Written communication: 18 points
+  - Verbal communication: 17 points
+
+Community Experience (25 points)
+  - Previous community management: 15 points
+  - Event organization: 10 points
+
+Personality & Culture Fit (25 points)
+  - Enthusiasm and energy: 10 points
+  - Empathy and patience: 8 points
+  - Alignment with mission: 7 points
+
+Organizational Skills (15 points)
+  - Multitasking ability: 8 points
+  - Attention to detail: 7 points
+
+MINIMUM PASSING SCORE: 65/100
+
+===============================================================
+Document Version: 1.0
+Last Updated: November 2025
+For Internal Use - HR & Recruitment
+===============================================================

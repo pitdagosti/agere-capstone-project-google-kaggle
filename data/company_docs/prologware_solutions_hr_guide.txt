@@ -1,0 +1,144 @@
+PROLOGWARE SOLUTIONS - SMART HIRE AI HR GUIDE
+============================================
+
+DOCUMENT OVERVIEW
+-----------------
+This comprehensive HR guide contains all essential company information for the Smart Hire AI recruitment system. The documentation includes company policies, benefits, job descriptions, evaluation criteria, and current performance metrics.
+
+DOCUMENT STRUCTURE
+------------------
+
+1. COMPANY PROFILE (prologware_solutions_company_profile.txt/.pdf)
+   - Company overview and mission
+   - Core business areas (Community + Agency services)
+   - Company values and competitive advantages
+   - Target audience and market position
+
+2. COMPANY POLICIES (prologware_solutions_policies.txt/.pdf)
+   - Remote work policy (60% remote, 40% on-site)
+   - Work-life balance guidelines
+   - Professional development requirements
+   - Diversity & inclusion standards
+   - Communication and security protocols
+   - Community engagement expectations
+   - Performance evaluation framework
+
+3. EMPLOYEE BENEFITS (prologware_solutions_benefits.txt/.pdf)
+   - Health & wellness benefits
+   - Financial benefits and compensation
+   - Time off and leave policies
+   - Professional development budget ($2000/year)
+   - Technology equipment and allowances
+   - Community access and social benefits
+
+4. JOB DESCRIPTIONS (job_descriptions.txt/.pdf)
+   - Senior Software Engineer
+   - AI/ML Engineer
+   - Mobile App Developer
+   - Web Developer
+   - Community Manager
+   - Detailed responsibilities and requirements for each role
+
+5. EVALUATION CRITERIA (evaluation_criteria.txt/.pdf)
+   - Technical skills assessment framework (1-5 scale)
+   - Soft skills evaluation criteria
+   - Interview process stages
+   - Scoring matrix and minimum requirements
+   - Red flags and rejection criteria
+
+6. COMPANY EXPECTATIONS (company_expectations.txt/.pdf)
+   - Technical excellence standards
+   - Professional conduct requirements
+   - Collaboration and teamwork expectations
+   - Innovation and growth mindset
+   - Client service standards
+   - Performance metrics and KPIs
+
+7. CURRENT STATUS & SCORES (current_status_scores.txt/.pdf)
+   - Company health score: 4.2/5.0
+   - Financial metrics and growth indicators
+   - Team composition (28 employees)
+   - Client satisfaction: 4.4/5.0
+   - Community metrics (2,847 members)
+   - Risk assessment and future readiness
+
+QUICK REFERENCE FOR AI RECRUITMENT
+----------------------------------
+
+KEY HIRING PRIORITIES:
+- AI/ML Engineers (High demand)
+- Senior Software Engineers
+- Mobile App Developers
+- Community-oriented professionals
+
+COMPANY CULTURE HIGHLIGHTS:
+- Community-first approach
+- Continuous learning emphasis
+- Work-life balance priority
+- Innovation and technology focus
+- Diversity and inclusion commitment
+
+COMPETITIVE ADVANTAGES FOR CANDIDATES:
+- Hybrid work model with flexibility
+- Strong professional development budget
+- Access to Resources Heaven platform
+- Opportunity to work on AI/ML projects
+- Community building and networking opportunities
+- Comprehensive benefits package
+
+EVALUATION QUICK REFERENCE:
+- Minimum score for senior roles: 4.0/5.0
+- Minimum score for mid-level: 3.5/5.0
+- Minimum score for junior roles: 3.0/5.0
+- Technical skills weight: 60%
+- Soft skills weight: 40%
+- Cultural fit is mandatory
+
+INTERVIEW PROCESS SUMMARY:
+1. Initial Screening (30 min)
+2. Technical Assessment (60-90 min)
+3. Behavioral Interview (45 min)
+4. Final Interview with team (60 min)
+
+RED FLAGS (Automatic rejection):
+- Dishonesty about qualifications
+- Poor communication skills
+- Inability to work in teams
+- Misalignment with company values
+- Lack of basic technical skills
+
+CURRENT HIRING NEEDS (Priority Order):
+1. AI/ML Engineers (2 positions)
+2. Senior Software Engineers (1 position)
+3. Mobile App Developers (1 position)
+4. Community Manager (1 position)
+
+SALARY RANGES (Annual):
+- Senior Software Engineer: $80,000 - $120,000
+- AI/ML Engineer: $85,000 - $130,000
+- Mobile App Developer: $65,000 - $95,000
+- Web Developer: $55,000 - $85,000
+- Community Manager: $45,000 - $65,000
+
+BENEFITS HIGHLIGHTS:
+- Health insurance (100% covered)
+- $2000 annual learning budget
+- Flexible PTO policy
+- Stock options program
+- $500 home office allowance
+- Mental health support
+
+COMPANY GROWTH TRAJECTORY:
+- 45% revenue growth YoY
+- 92% client retention rate
+- 89% employee retention rate
+- Expanding into AI solutions market
+- Growing community platform (2,847 members)
+
+TECHNOLOGY STACK:
+- Programming: Python, Java, C#, JavaScript, Kotlin
+- AI/ML: TensorFlow, PyTorch, OpenAI APIs
+- Mobile: Android Studio, .NET MAUI
+- Web: React, Node.js, .NET Core
+- Cloud: AWS, Azure, GCP
+- Tools: Git, Docker, Kubernetes

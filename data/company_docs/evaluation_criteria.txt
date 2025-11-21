@@ -1,0 +1,139 @@
+PROLOGWARE SOLUTIONS - CANDIDATE EVALUATION CRITERIA
+===================================================
+
+TECHNICAL EVALUATION FRAMEWORK
+------------------------------
+
+SCORING SYSTEM: 1-5 Scale
+1 = Poor/No Experience
+2 = Basic/Limited Experience  
+3 = Competent/Average
+4 = Proficient/Above Average
+5 = Expert/Exceptional
+
+CORE TECHNICAL SKILLS ASSESSMENT
+--------------------------------
+
+SOFTWARE ENGINEERING ROLES:
+- Programming Languages Proficiency (Weight: 25%)
+- System Design and Architecture (Weight: 20%)
+- Problem-solving and Algorithms (Weight: 20%)
+- Code Quality and Best Practices (Weight: 15%)
+- Testing and Debugging Skills (Weight: 10%)
+- Version Control and Collaboration (Weight: 10%)
+
+AI/ML ENGINEERING ROLES:
+- Machine Learning Fundamentals (Weight: 25%)
+- Programming and Data Science Tools (Weight: 20%)
+- Model Development and Deployment (Weight: 20%)
+- Data Processing and Analysis (Weight: 15%)
+- Research and Innovation Capability (Weight: 10%)
+- Business Problem Understanding (Weight: 10%)
+
+MOBILE DEVELOPMENT ROLES:
+- Platform-specific Development (Weight: 25%)
+- UI/UX Implementation (Weight: 20%)
+- Performance Optimization (Weight: 15%)
+- API Integration (Weight: 15%)
+- Testing and Quality Assurance (Weight: 15%)
+- App Store Guidelines Knowledge (Weight: 10%)
+
+WEB DEVELOPMENT ROLES:
+- Frontend Technologies (Weight: 25%)
+- Backend Development (Weight: 20%)
+- Database Management (Weight: 15%)
+- Web Performance and Security (Weight: 15%)
+- Responsive Design (Weight: 15%)
+- DevOps and Deployment (Weight: 10%)
+
+SOFT SKILLS EVALUATION
+----------------------
+
+COMMUNICATION SKILLS (Weight: 20%)
+- Verbal communication clarity
+- Written communication effectiveness
+- Technical explanation ability
+- Active listening skills
+- Presentation capabilities
+
+TEAMWORK AND COLLABORATION (Weight: 20%)
+- Team player attitude
+- Conflict resolution skills
+- Knowledge sharing willingness
+- Cross-functional collaboration
+- Mentoring potential
+
+PROBLEM-SOLVING APPROACH (Weight: 20%)
+- Analytical thinking
+- Creative solution finding
+- Debugging methodology
+- Research and learning ability
+- Decision-making process
+
+ADAPTABILITY AND LEARNING (Weight: 20%)
+- Technology adaptation speed
+- Continuous learning mindset
+- Feedback receptiveness
+- Change management
+- Innovation thinking
+
+CULTURAL FIT (Weight: 20%)
+- Alignment with company values
+- Community-oriented mindset
+- Professional growth motivation
+- Work-life balance understanding
+- Diversity and inclusion support
+
+INTERVIEW PROCESS EVALUATION
+----------------------------
+
+STAGE 1: INITIAL SCREENING (30 minutes)
+- Resume and portfolio review
+- Basic technical questions
+- Cultural fit assessment
+- Salary expectations discussion
+- Availability and logistics
+
+STAGE 2: TECHNICAL ASSESSMENT (60-90 minutes)
+- Coding challenge or technical test
+- System design discussion (for senior roles)
+- Portfolio/project walkthrough
+- Technical problem-solving scenarios
+- Tool and technology proficiency
+
+STAGE 3: BEHAVIORAL INTERVIEW (45 minutes)
+- STAR method behavioral questions
+- Team collaboration scenarios
+- Conflict resolution examples
+- Learning and growth experiences
+- Leadership and mentoring examples
+
+STAGE 4: FINAL INTERVIEW (60 minutes)
+- Meet with team members
+- Company culture discussion
+- Career goals alignment
+- Questions about role and company
+- Final technical clarifications
+
+EVALUATION SCORING MATRIX
+-------------------------
+
+OVERALL CANDIDATE RATING:
+- 4.5-5.0: Exceptional - Strong hire recommendation
+- 4.0-4.4: Strong - Hire recommendation
+- 3.5-3.9: Good - Conditional hire (with development plan)
+- 3.0-3.4: Average - Consider for junior roles or with training
+- Below 3.0: Not recommended for current openings
+
+MINIMUM REQUIREMENTS BY ROLE:
+- Senior positions: Minimum 4.0 overall score
+- Mid-level positions: Minimum 3.5 overall score
+- Junior positions: Minimum 3.0 overall score
+- Internship positions: Minimum 2.5 overall score
+
+RED FLAGS (Automatic rejection):
+- Dishonesty about experience or qualifications
+- Poor communication or unprofessional behavior
+- Inability to work in team environment
+- Lack of basic technical skills for the role
+- Misalignment with company values and culture
