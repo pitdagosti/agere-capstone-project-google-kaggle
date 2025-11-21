@@ -136,41 +136,50 @@ graph TB
 capstone-project-google-kaggle/
 ├── main.py                      # Streamlit UI entry point
 ├── requirements.txt             # Python dependencies
-├── .env                         # Environment variables (create from .env.example)
+├── .env                         # Environment variables (create from env.example)
 ├── env.example                  # Environment variables template
 ├── .gitignore                   # Git ignore rules
 ├── README.md                    # This file
-├── LICENSE                      # License information
+├── LICENSE                      # License information (CC BY-SA 4.0)
+├── __init__.py                  # Package initialization
 │
-├── agents/                      # Agent implementations (to be created)
-│   ├── orchestrator.py         # Main orchestrator agent
-│   ├── resume_screener.py      # Resume parsing agent
-│   ├── tech_assessor.py        # Technical assessment agent
-│   ├── culture_assessor.py     # Culture fit agent
-│   ├── qa_rag_agent.py         # Q&A RAG agent
-│   ├── scheduler.py            # Interview scheduler
-│   └── communicator.py         # Email communication agent
+├── src/                         # Source code directory
+│   ├── agents/                  # Agent implementations
+│   │   ├── __init__.py         # Agents module initialization
+│   │   └── agents.py           # Core agent logic (Orchestrator, Screener, etc.)
+│   │
+│   └── tools/                   # Tools and utilities
+│       ├── __init__.py         # Tools module initialization
+│       ├── tools.py            # Agent tools implementation
+│       └── mcp_client.py       # Model Context Protocol client
 │
 ├── mcp_server/                  # Model Context Protocol server
 │   ├── calendar_server.py      # MCP calendar service
-│   └── calendar.db             # SQLite calendar database
+│   └── calendar.db             # SQLite calendar database (created at runtime)
 │
-├── data/                        # Data directory (to be created)
-│   ├── company_docs/           # Company documentation for RAG
-│   ├── candidates/             # Candidate data storage
-│   └── memory_bank/            # Persistent memory storage
+├── test_debug_notebooks/        # Development and testing notebooks
+│   ├── main.ipynb              # Main experimentation notebook
+│   ├── test_debug_agents.ipynb # Agent testing notebook
+│   └── test_debug_tools.ipynb  # Tools testing notebook
 │
-├── notebooks/                   # Development notebooks
-│   └── main.ipynb              # Experimentation notebook
+├── md_files/                    # Documentation files
+│   ├── API_KEY_SETUP.md        # API key configuration guide
+│   ├── ARCHITECTURE.md         # Architecture documentation
+│   ├── CLIENT_EXPLAINED.md     # MCP client explanation
+│   ├── ENV_SETUP.md            # Environment setup guide
+│   ├── QUICK_START.md          # Quick start guide
+│   ├── PROJECT_STRUCTURE.md    # Project structure details
+│   ├── RUN_STREAMLIT.md        # Streamlit execution guide
+│   └── ...                     # Additional documentation
 │
-├── utils/                       # Utility functions (to be created)
-│   ├── pdf_parser.py           # PDF parsing utilities
-│   ├── sandbox.py              # Code execution sandbox
-│   ├── memory.py               # Memory management
-│   └── logging_config.py       # Logging configuration
+├── dummy_files_for_testing/     # Sample test files
+│   ├── cv_john_doe.pdf         # Sample CV (PDF format)
+│   ├── cv_john_doe.txt         # Sample CV (TXT format)
+│   ├── cv_maria_santos.pdf     # Sample CV (PDF format)
+│   └── cv_maria_santos.txt     # Sample CV (TXT format)
 │
-└── tests/                       # Unit tests (to be created)
-    └── test_agents.py          # Agent tests
+└── temp_uploads/                # Temporary file uploads (runtime)
+    └── *.pdf                    # Uploaded candidate CVs
 ```
 
 ---
