@@ -8,23 +8,29 @@ from google.genai import types
 # CUSTOM ADK TOOLS - These can be used in Agent tools=[] parameter
 # =============================================================================
 
-def read_cv(filename: Annotated[str, "Name of the CV file to read from dummy_files_for_testing folder"]) -> str:
+def read_cv(filename: Annotated[str, "Name of the CV file to read and analyze"]) -> str:
     """
-    Read a CV file from the dummy_files_for_testing folder.
+    Read a CV file that has been uploaded for analysis.
     This tool allows the agent to read candidate CVs.
     
     Args:
-        filename: Name of the CV file (e.g., 'cv_john_doe.txt')
+        filename: Name of the CV file (e.g., 'cv_john_doe.txt' or 'candidate_resume.pdf')
         
     Returns:
         str: Content of the CV file
     """
-    # Construct full path
-    base_path = Path(__file__).parent.parent / "dummy_files_for_testing"
-    file_path = base_path / filename
+    # Check both temp_uploads (for Streamlit uploads) and dummy_files_for_testing (for testing)
+    base_path = Path(__file__).parent.parent
+    temp_uploads_path = base_path / "temp_uploads" / filename
+    dummy_files_path = base_path / "dummy_files_for_testing" / filename
     
-    if not file_path.exists():
-        return f"❌ Error: File '{filename}' not found in dummy_files_for_testing folder"
+    # Try temp_uploads first (for uploaded files), then dummy_files_for_testing (silently as fallback)
+    if temp_uploads_path.exists():
+        file_path = temp_uploads_path
+    elif dummy_files_path.exists():
+        file_path = dummy_files_path
+    else:
+        return f"❌ Error: Could not find the CV file '{filename}'. Please ensure the file was uploaded successfully."
     
     try:
         if file_path.suffix == '.txt':
