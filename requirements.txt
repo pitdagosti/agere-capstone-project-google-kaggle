@@ -1,0 +1,36 @@
+# Core dependencies for PROJECT AGERE - Agentic Recruiter
+
+# Web Framework
+streamlit>=1.39.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# PDF Processing
+PyPDF2>=3.0.0
+pdfplumber>=0.11.0
+
+#ADK
+google-adk>=0.1.0
+
+# Text Processing
+nltk>=3.8.0
+spacy>=3.7.0
+
+# AI/ML Libraries (add as needed for your agents)
+openai>=1.0.0  # If using OpenAI
+anthropic>=0.34.0  # If using Claude
+langchain>=0.3.0  # If using LangChain for agents
+langchain-community>=0.3.0
+
+# Data Processing
+pandas>=2.2.0
+numpy>=1.26.0
+
+# File Handling
+python-magic>=0.4.27  # File type detection
+
+# Optional: Resume Parsing Libraries
+# pyresparser>=1.0.6  # Uncomment if needed
+# resume-parser>=0.8.4  # Uncomment if needed
+
