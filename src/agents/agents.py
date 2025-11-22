@@ -5,6 +5,8 @@ from google.adk.agents import Agent
 from google.adk.runners import InMemoryRunner
 from google.adk.tools import google_search
 from google.genai import types
+from google.adk.models.google_llm import Gemini
+
 
 # Import custom tools
 from src.tools import read_cv, list_available_cvs, compare_candidates
@@ -18,6 +20,14 @@ load_dotenv()
 print("✅ ADK components imported successfully.")
 print("✅ ADK will auto-initialize client from environment variables")
 
+# RETRY OPTIONS:
+retry_config=types.HttpRetryOptions(
+    attempts=5,  # Maximum retry attempts
+    exp_base=7,  # Delay multiplier
+    initial_delay=1,
+    http_status_codes=[429, 500, 503, 504] # Retry on these HTTP errors
+)
+
 # Agents Definition
 # ADK will automatically read GOOGLE_API_KEY and GOOGLE_GENAI_USE_VERTEXAI
 # from environment variables - no need to create Client explicitly!
@@ -25,7 +35,7 @@ print("✅ ADK will auto-initialize client from environment variables")
 # TODO: AGENT TO SCREEN THE RESUME AND CHECK IF IT MATCHES THE JOB DESCRIPTION
 root_agent = Agent(
     name="CV_Analysis_Agent",
-    model="gemini-2.5-flash-lite",
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
     description="Professional HR assistant that reads, analyzes, and provides insights on candidate CVs.",
     instruction="""
     You are a professional HR assistant specializing in CV analysis and candidate evaluation.
@@ -103,7 +113,7 @@ print("✅ Root Agent defined with custom CV tools.")
 # This Agent Features a Human-in-the-Loop (HITL) layer to ensure the candidate is comfortable with the message before sending it.
 recruiter_finder_agent = Agent(
     name="recruiter_finder_agent",
-    model="gemini-2.5-flash-lite",
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
     description="Candidate's assistant that finds a recruiter from the company the candidate is applying to.",
     instruction="""
     Candidate's assistant that finds a recruiter from the company the candidate is applying to. 
