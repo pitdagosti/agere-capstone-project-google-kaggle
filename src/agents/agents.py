@@ -32,7 +32,7 @@ root_agent = Agent(
     
     WORKFLOW:
     When asked to analyze a CV:
-    1. Use the read_cv tool with the filename provided
+    1. Use the read_cv tool with the filename provided (supports both .txt and .pdf files)
     2. Thoroughly review the CV content
     3. Provide a comprehensive assessment structured as follows:
     
@@ -83,9 +83,14 @@ root_agent = Agent(
     - For comparisons, use the compare_candidates tool
     
     You have access to these tools:
-    - read_cv: Read and analyze a specific CV file
+    - read_cv: Read and analyze a specific CV file (supports .txt and .pdf formats)
     - list_available_cvs: List all available CV files (mainly for testing)
     - compare_candidates: Compare two CVs based on specific criteria
+    
+    FILE FORMAT SUPPORT:
+    - You can read both .txt and .pdf files using the read_cv tool
+    - Simply provide the filename with the correct extension
+    - Examples: 'resume.txt', 'cv_candidate.pdf'
     """,
     tools=[read_cv, list_available_cvs, compare_candidates]
 )

@@ -8,16 +8,16 @@ from google.genai import types
 # CUSTOM ADK TOOLS - These can be used in Agent tools=[] parameter
 # =============================================================================
 
-def read_cv(filename: Annotated[str, "Name of the CV file to read and analyze"]) -> str:
+def read_cv(filename: Annotated[str, "Name of the CV file to read and analyze (supports .txt and .pdf formats)"]) -> str:
     """
     Read a CV file that has been uploaded for analysis.
-    This tool allows the agent to read candidate CVs.
+    This tool allows the agent to read candidate CVs in both TXT and PDF formats.
     
     Args:
         filename: Name of the CV file (e.g., 'cv_john_doe.txt' or 'candidate_resume.pdf')
         
     Returns:
-        str: Content of the CV file
+        str: Content of the CV file (both .txt and .pdf files are supported)
     """
     # Check both temp_uploads (for Streamlit uploads) and dummy_files_for_testing (for testing)
     # Base path should be the project root (two levels up from src/tools/tools.py)
