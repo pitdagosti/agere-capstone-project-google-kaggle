@@ -98,6 +98,47 @@ root_agent = Agent(
 print("✅ Root Agent defined with custom CV tools.")
 
 # TODO: AGENT TO MATCH THE CANDIDATE TO THE JOB DESCRIPTION
+# This agent shuold provide N (say 5) suggestions of jobs that the candidate is a good fit for
+# TODO: AGENT TO PROVIDE A PROFILE LINK TO LINKEDIN FOR RECRUITER 
+# This Agent Features a Human-in-the-Loop (HITL) layer to ensure the candidate is comfortable with the message before sending it.
+recruiter_finder_agent = Agent(
+    name="recruiter_finder_agent",
+    model="gemini-2.5-flash-lite",
+    description="Candidate's assistant that finds a recruiter from the company the candidate is applying to.",
+    instruction="""
+    Candidate's assistant that finds a recruiter from the company the candidate is applying to. 
+    Use Google Search to find the recruiter's profile on LinkedIn.
+    Provide his link and suggest a message for the candidate to reach out to him.
+    The message should be a personalized message for the candidate to reach out to the recruiter.
+    The message should be a maximum of 100 words.
+    Ask the candidate for message approval before sending it.  
+    """,
+    tools=[google_search],
+)
+
+print("✅ Root Agent defined.")
 # TODO: AGENT TO CREATE AN ASSESSMENT FOR THE CANDIDATE (CODE INTERVIEW)
+# This agent shuold create a code interview assessment for the candidate. 
+# The assessment should be written in the language mentioned in the uploaded CV.
+# The assessment shuould be ran in a sandbox environment. 
+# Provide assessment evaluation and feedback to the candidate.
+
 # TODO: AGENT TO CREATE AN ASSESSMENT FOR THE CANDIDATE (LANGUAGE TEST)
+# This agent shuold create a language test assessment for the candidate. 
+# The assessment should be written in the language mentioned in the uploaded CV.
+# The candidate shuold be able to provide a message in the chat window to the agent as response to the assessment.
+# Provide assessment evaluation and feedback to the candidate.
+
 # TODO: AGENT TO SCHEDULE THE CANDIDATE FOR THE LIVE INTERVIEW
+# If the candidate is a good fit, the agent should schedule a live interview for the candidate.
+# PitDagosti's tool leveraging google calendar API should be used to schedule the interview.
+
+
+# TODO: ORCHESTRATOR AGENT
+# Luminare
+
+
+
+
+# ‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️
+# Make sure to add necessary tools to src/tools/tools.py and update respective __init__.py files.
