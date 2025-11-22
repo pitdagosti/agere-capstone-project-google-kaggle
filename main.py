@@ -34,98 +34,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for better styling
-st.markdown("""
-    <style>
-    /* Main Header */
-    .main-header {
-        text-align: center;
-        padding: 3rem 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 20px;
-        margin-bottom: 3rem;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-    }
-    .main-header h1 {
-        font-size: 3rem;
-        font-weight: 800;
-        margin-bottom: 0.5rem;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    .main-header h3 {
-        font-size: 1.2rem;
-        font-weight: 300;
-        opacity: 0.9;
-    }
-    
-    /* Feature Cards */
-    .feature-card {
-        background-color: white;
-        padding: 1.5rem;
-        border-radius: 15px;
-        border: 1px solid #f0f0f0;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        height: 100%;
-        text-align: center;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    .feature-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        border-color: #667eea;
-    }
-    .feature-icon {
-        font-size: 2.5rem;
-        margin-bottom: 1rem;
-    }
-    .feature-title {
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        color: #2c3e50;
-    }
-    .feature-desc {
-        font-size: 0.9rem;
-        color: #7f8c8d;
-    }
-    
-    /* Step Items */
-    .step-item {
-        text-align: center;
-        padding: 1rem;
-    }
-    .step-number {
-        background-color: #667eea;
-        color: white;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 0.5rem;
-        font-weight: bold;
-    }
-    
-    /* File Uploader Styling Override */
-    [data-testid="stFileUploader"] {
-        padding: 2rem;
-        border-radius: 15px;
-        background-color: #f8f9fa;
-        border: 2px dashed #667eea;
-    }
-    
-    /* Footer */
-    .footer {
-        text-align: center;
-        color: #95a5a6;
-        padding: 3rem 0;
-        margin-top: 3rem;
-        border-top: 1px solid #eee;
-        font-size: 0.8rem;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# Load custom CSS from external file
+def load_css():
+    """Load custom CSS styling from external file"""
+    css_file = Path(__file__).parent / "src" / "styles" / "custom.css"
+    with open(css_file) as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+load_css()
 
 # Initialize session state for chat and agent
 if 'messages' not in st.session_state:
@@ -342,6 +258,21 @@ def main():
                 
         with col_btn2:
             if st.button("🗑️ Clear & Reset", use_container_width=True):
+                # Delete ALL files from temp_uploads folder
+                temp_uploads_dir = Path(__file__).parent / "temp_uploads"
+                if temp_uploads_dir.exists():
+                    try:
+                        # Delete all files in the temp_uploads directory
+                        deleted_count = 0
+                        for file in temp_uploads_dir.iterdir():
+                            if file.is_file():  # Only delete files, not directories
+                                file.unlink()
+                                deleted_count += 1
+                        if deleted_count > 0:
+                            st.success(f"🗑️ Deleted {deleted_count} file(s) from temp_uploads")
+                    except Exception as e:
+                        st.error(f"Could not delete files: {e}")
+                
                 # Clear session state completely
                 st.session_state.messages = []
                 st.session_state.current_cv_file = None
