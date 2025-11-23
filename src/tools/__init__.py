@@ -16,6 +16,10 @@ from .tools import (
     load_all_cvs,
 )
 
+from .mcp_client import (
+    CalendarClient,
+)
+
 __all__ = [
     # ADK Tools
     'read_cv',
@@ -24,5 +28,6 @@ __all__ = [
     # Helper functions
     'read_cv_file',
     'load_all_cvs',
+    'CalendarClient',
 ]
 
