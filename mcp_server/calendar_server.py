@@ -1,13 +1,13 @@
 import os
-import json
 from flask import Flask, jsonify, request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from dateutil import parser
 
-# Load environment variables (from the .env file in the parent folder)
+# Load environment variables
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 app = Flask(__name__)
@@ -17,128 +17,109 @@ app = Flask(__name__)
 def get_google_calendar_service():
     """
     Create the service object for the Google Calendar API using the Refresh Token.
-    This automatically renews the Access Token as long as the Refresh Token is valid.
     """
     try:
-        # Calendar access scopes (must match those used to obtain the token)
         SCOPES = ['https://www.googleapis.com/auth/calendar']
-
         credentials = Credentials(
-            token=None,  # Access Token is not needed here, it will be generated
+            token=None,
             refresh_token=os.getenv('GOOGLE_REFRESH_TOKEN'),
             client_id=os.getenv('GOOGLE_CLIENT_ID'),
             client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
             token_uri='https://oauth2.googleapis.com/token',
             scopes=SCOPES
         )
-        
-        # Force a refresh to verify the Refresh Token's validity and obtain the first Access Token
         credentials.refresh(Request())
-        
-        # Build the Google Calendar service object
         service = build('calendar', 'v3', credentials=credentials)
         return service
     except Exception as e:
         print(f"Error during Google Calendar authentication: {e}")
         return None
 
-# Global variable for the service and calendar ID
 CALENDAR_SERVICE = get_google_calendar_service()
 CALENDAR_ID = os.getenv('CALENDAR_ID')
 
-# --- MCP Endpoints Implementation ---
+# --- Endpoints ---
 
-# 0. Health Check Endpoint (GET /)
 @app.route('/', methods=['GET'])
 def health_check():
-    """Endpoint to verify that the server is running and connected to the calendar."""
+    """Verify server is running and connected to Google Calendar."""
     if CALENDAR_SERVICE:
-        return jsonify({"status": "Server running", "calendar_connection": "OK", "endpoints": ["/slots", "/book"]}), 200
+        return jsonify({
+            "status": "Server running",
+            "calendar_connection": "OK",
+            "endpoints": ["/slots", "/book"]
+        }), 200
     else:
-        return jsonify({"status": "Server running", "calendar_connection": "Failed. Check .env and credentials."}), 500
+        return jsonify({
+            "status": "Server running",
+            "calendar_connection": "Failed. Check .env and credentials."
+        }), 500
 
-# 1. Find free slots -> GET /slots
 @app.route('/slots', methods=['GET'])
 def get_free_busy_slots():
-    """
-    Endpoint to find busy slots within a time interval.
-    Parameters required as query string: timeMin and timeMax (ISO 8601).
-    """
+    """Return busy slots in a given interval."""
     if not CALENDAR_SERVICE:
         return jsonify({"error": "Google Calendar service not initialized."}), 500
 
-    # Retrieve parameters from query string (required for GET method)
     time_min_str = request.args.get('timeMin')
     time_max_str = request.args.get('timeMax')
 
     if not time_min_str or not time_max_str:
         return jsonify({"error": "timeMin and timeMax parameters are required."}), 400
 
-    # Prepare the Free/Busy request body
-    body = {
-        "timeMin": time_min_str,
-        "timeMax": time_max_str,
-        "items": [{"id": CALENDAR_ID}]
-    }
-
     try:
-        # Execute the request to Google
-        free_busy_result = CALENDAR_SERVICE.freebusy().query(body=body).execute()
-        
-        # Extract busy slots
-        busy_slots = free_busy_result['calendars'][CALENDAR_ID].get('busy', [])
-        
-        # Return busy slots; client is responsible for calculating free ones
+        body = {"timeMin": time_min_str, "timeMax": time_max_str, "items": [{"id": CALENDAR_ID}]}
+        result = CALENDAR_SERVICE.freebusy().query(body=body).execute()
+        busy_slots = result['calendars'][CALENDAR_ID].get('busy', [])
         return jsonify({"calendar_id": CALENDAR_ID, "busy_slots": busy_slots}), 200
-
     except Exception as e:
         print(f"Error during free/busy query: {e}")
         return jsonify({"error": str(e)}), 500
 
-# 2. Book an event -> POST /book
 @app.route('/book', methods=['POST'])
 def book_interview_slot():
-    """
-    Endpoint to create a new event (appointment).
-    Parameters are passed in the POST request JSON body.
-    """
+    """Create a new event if the slot is free."""
     if not CALENDAR_SERVICE:
         return jsonify({"error": "Google Calendar service not initialized."}), 500
 
     data = request.get_json()
-
-    # Required parameters
     start_time_str = data.get('start')
     end_time_str = data.get('end')
     summary = data.get('summary', 'Smart-Hire AI Technical Interview')
     candidate_email = data.get('attendee_email', None)
 
-    event = {
-        'summary': summary,
-        'location': 'Google Meet (Automatically generated)',
-        'description': f'Technical interview generated by Smart-Hire AI for candidate: {candidate_email}',
-        'start': {
-            'dateTime': start_time_str,
-            'timeZone': 'Europe/Rome',  # Standard timezone for Italy
-        },
-        'end': {
-            'dateTime': end_time_str,
-            'timeZone': 'Europe/Rome',
-        },
-        'attendees': [
-            {'email': CALENDAR_ID},  # Organizer (the recruiter)
-        ]
-    }
-
-    # Add the candidate only if email is provided
-    if candidate_email:
-        event['attendees'].append({'email': candidate_email, 'responseStatus': 'needsAction'})
-
+    # Convert strings to datetime objects
     try:
-        # Insert the event into the calendar
+        start_dt = parser.isoparse(start_time_str)
+        end_dt = parser.isoparse(end_time_str)
+    except Exception as e:
+        return jsonify({"status": "failed", "reason": f"Invalid datetime format: {e}"}), 400
+
+    # Check for conflicts
+    try:
+        body = {"timeMin": start_time_str, "timeMax": end_time_str, "items": [{"id": CALENDAR_ID}]}
+        freebusy_result = CALENDAR_SERVICE.freebusy().query(body=body).execute()
+        busy_slots = freebusy_result['calendars'][CALENDAR_ID].get('busy', [])
+
+        for b in busy_slots:
+            busy_start = parser.isoparse(b['start'])
+            busy_end = parser.isoparse(b['end'])
+            if start_dt < busy_end and end_dt > busy_start:
+                return jsonify({"status": "failed", "reason": "Slot already booked"}), 409
+
+        # Build event
+        event = {
+            'summary': summary,
+            'location': 'Google Meet (Automatically generated)',
+            'description': f'Technical interview for {candidate_email}',
+            'start': {'dateTime': start_time_str, 'timeZone': 'Europe/Rome'},
+            'end': {'dateTime': end_time_str, 'timeZone': 'Europe/Rome'},
+            'attendees': [{'email': CALENDAR_ID}]
+        }
+        if candidate_email:
+            event['attendees'].append({'email': candidate_email, 'responseStatus': 'needsAction'})
+
         event_result = CALENDAR_SERVICE.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        
-        # Return the created event details
         return jsonify({
             "status": "success",
             "event_id": event_result['id'],
@@ -150,11 +131,10 @@ def book_interview_slot():
         print(f"Error while inserting event: {e}")
         return jsonify({"error": str(e)}), 500
 
-# --- Server Execution ---
+# --- Server start ---
 if __name__ == '__main__':
     if CALENDAR_SERVICE:
         print("MCP Calendar Server started. Connected to Google Calendar.")
-        # Start the Flask application
         app.run(port=5000, debug=True)
     else:
         print("Unable to start server: Google Calendar authentication failed.")
