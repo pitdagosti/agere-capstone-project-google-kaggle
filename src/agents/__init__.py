@@ -4,17 +4,25 @@ Contains all agent definitions for the Agentic Recruiter system.
 """
 
 from .agents import (
-    root_agent,
+    CV_analysis_agent,
+    job_listing_agent,
+    recruiter_finder_agent,
+    orchestrator,
     Agent,
     InMemoryRunner,
+    LlmAgent,
     google_search,
     types
 )
 
 __all__ = [
-    'root_agent',
+    'CV_analysis_agent',
+    'job_listing_agent',
+    'recruiter_finder_agent',
+    'orchestrator',
     'Agent',
     'InMemoryRunner',
+    'LlmAgent',
     'google_search',
     'types'
 ]
