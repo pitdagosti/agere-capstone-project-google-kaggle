@@ -1,9 +1,9 @@
 # AGENTS FILE 🧑‍🏭
 
 # Packages Import
-from google.adk.agents import Agent
+from google.adk.agents import Agent, LlmAgent
 from google.adk.runners import InMemoryRunner
-from google.adk.tools import google_search
+from google.adk.tools import google_search, AgentTool, FunctionTool
 from google.genai import types
 from google.adk.models.google_llm import Gemini
 
@@ -33,9 +33,9 @@ retry_config=types.HttpRetryOptions(
 # from environment variables - no need to create Client explicitly!
 
 # TODO: AGENT TO SCREEN THE RESUME AND CHECK IF IT MATCHES THE JOB DESCRIPTION
-root_agent = Agent(
-    name="CV_Analysis_Agent",
-    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
+CV_analysis_agent = Agent(
+    name="CV_analysis_agent",
+    model=Gemini(model="gemini-2.5-flash-lite"),
     description="Professional HR assistant that reads, analyzes, and provides insights on candidate CVs.",
     instruction="""
     You are a professional HR assistant specializing in CV analysis and candidate evaluation.
@@ -109,19 +109,31 @@ print("✅ Root Agent defined with custom CV tools.")
 
 # TODO: AGENT TO MATCH THE CANDIDATE TO THE JOB DESCRIPTION
 # This agent shuold provide N (say 5) suggestions of jobs that the candidate is a good fit for
+job_listing_agent = Agent(
+    name="job_listing_agent",
+    model=Gemini(model="gemini-2.5-flash-lite"),
+    description="Agent Assistant that searches the internet with Google Search tool.",
+    instruction="""
+    Agent Assistant that searches the internet with Google Search tool.
+    Use Google Search to find job listings for the candidate based on the characteristics of his CV.
+    Provide a choice of 5 job listings for the candidate to choose from.
+    Wait for candidate choice. If the candidate makes a decision, inform the orchestrator agent,
+    otherwise, provide other 5 job listings for the candidate to choose from.
+    Repeat the process until the candidate makes a decision.
+    """,
+    tools=[google_search],
+)
 # TODO: AGENT TO PROVIDE A PROFILE LINK TO LINKEDIN FOR RECRUITER 
 # This Agent Features a Human-in-the-Loop (HITL) layer to ensure the candidate is comfortable with the message before sending it.
 recruiter_finder_agent = Agent(
     name="recruiter_finder_agent",
-    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
+    model=Gemini(model="gemini-2.5-flash-lite"),
     description="Candidate's assistant that finds a recruiter from the company the candidate is applying to.",
     instruction="""
     Candidate's assistant that finds a recruiter from the company the candidate is applying to. 
-    Use Google Search to find the recruiter's profile on LinkedIn.
-    Provide his link and suggest a message for the candidate to reach out to him.
-    The message should be a personalized message for the candidate to reach out to the recruiter.
-    The message should be a maximum of 100 words.
-    Ask the candidate for message approval before sending it.  
+    Use Google Search to find the recruiter's profile on LinkedIn. 
+    If the recruiter's profile is not found you must inform the user that the recruiter's profile is not found 
+    and you must provide the user with the company's website link.
     """,
     tools=[google_search],
 )
@@ -145,7 +157,61 @@ print("✅ Root Agent defined.")
 
 
 # TODO: ORCHESTRATOR AGENT
-# Luminare
+orchestrator = LlmAgent(
+    name="manager",
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
+    # The instruction explains WHO to call and WHY
+    instruction="""
+    You are a job applicant assistant orchestrator. You coordinate a team of specialized agents to help 
+    candidates find their ideal job match. You MUST delegate tasks to your sub-agents.
+    
+    YOUR TEAM OF AGENTS:
+    1. 'CV_analysis_agent': Analyzes CVs and extracts candidate information, skills, experience
+    2. 'job_listing_agent': Searches for job listings that match the candidate's profile
+    3. 'recruiter_finder_agent': Finds recruiters. 
+    
+    WORKFLOW - Follow these steps IN ORDER:
+    
+    STEP 1: CV Analysis
+    - When a user uploads a CV or asks to analyze one, DELEGATE to 'CV_analysis_agent'
+    - Wait for the CV analysis to complete
+    - Once you receive the analysis, SUMMARIZE it for the user
+    - Then EXACTLY ask: "Would you like me to find job listings that match your profile?"
+    
+    STEP 2: Job Listings (only after CV analysis is complete)
+    - When user confirms or asks for job listings, you must DELEGATE to 'job_listing_agent'
+    - Ask the job_listing_agent to find 5 relevant jobs based on the CV analysis
+    - Present the 5 jobs to the user with clear descriptions
+    - Ask the user: "Which job interests you most? (Choose 1-5, or ask for more options)"
+    - If user wants more options, delegate to job_listing_agent again for 5 more listings
+    - If user selects a job, proceed to Step 3
+    
+    STEP 3: Recruiter Finder (only after user selects a job)
+    - DELEGATE to 'recruiter_finder_agent' with the selected company name
+    - Wait for recruiter information
+    - Present the recruiter's LinkedIn profile 
+    - Ask for user approval before proceeding
+    
+    CRITICAL RULES:
+    - ALWAYS delegate to sub-agents using their exact names
+    - NEVER skip steps - follow the workflow sequentially
+    - ALWAYS wait for user confirmation before moving to the next major step
+    - Keep the user informed of progress at each stage
+    - If a user asks a question about the CV, delegate back to CV_analysis_agent
+    - Be conversational and helpful, but stay focused on the workflow
+    - SPECIFY WHICH AGENT YOU CALLED BEFORE PROVIDING THE ANSWER TO THE USER.
+    
+    DELEGATION SYNTAX:
+    To use a sub-agent, clearly state which agent you're calling and what you need from them.
+    Example: "Let me ask the CV_analysis_agent to analyze your CV..."
+    """,
+    # This automatically registers them as available "tools" for the manager
+    tools=[
+        AgentTool(CV_analysis_agent), 
+        AgentTool(recruiter_finder_agent), 
+        AgentTool(job_listing_agent)
+    ],
+)
 
 
 

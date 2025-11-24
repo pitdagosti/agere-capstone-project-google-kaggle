@@ -9,11 +9,12 @@ Users can upload their CV/resume and interact with the AI-powered recruitment sy
 import streamlit as st
 import os
 import asyncio
+import html
 from dotenv import load_dotenv
 from pathlib import Path
 
 # Import your agents and tools
-from src.agents import root_agent, InMemoryRunner
+from src.agents import *
 
 # Load environment variables
 load_dotenv()
@@ -84,13 +85,15 @@ def run_agent_sync(runner, prompt):
         return f"⚠️ Error running agent: {str(e)}"
 
 def analyze_cv_with_runner(runner, filename):
-    """Call the agent to analyze a CV file"""
+    """Call the orchestrator agent to start the CV analysis workflow"""
     try:
-        # Simple, direct request - the agent knows what to do
-        prompt = f"Please analyze the CV file: {filename}"
+        # Trigger the orchestrator's workflow - it will delegate to CV_analysis_agent
+        prompt = f"""I've uploaded my CV file: {filename}
         
-        # Run agent
-        with st.spinner("🤖 AI Agent analyzing CV..."):
+Please analyze it and help me find suitable job opportunities."""
+        
+        # Run orchestrator agent
+        with st.spinner("🤖 Orchestrator Agent starting workflow..."):
             response = run_agent_sync(runner, prompt)
         
         if response:
@@ -107,7 +110,7 @@ def show_analysis_dialog(uploaded_file):
     
     # Initialize runner if not exists
     if st.session_state.runner is None:
-        st.session_state.runner = InMemoryRunner(agent=root_agent)
+        st.session_state.runner = InMemoryRunner(agent=orchestrator)
     
     # Save uploaded file to temp_uploads folder for agent to access
     temp_uploads_dir = Path(__file__).parent / "temp_uploads"
@@ -134,8 +137,6 @@ def show_analysis_dialog(uploaded_file):
         
         # Display analysis
         if analysis_result:
-            st.markdown(analysis_result)
-            
             # Add to message history
             st.session_state.messages.append({
                 "role": "assistant",
@@ -149,31 +150,51 @@ def show_analysis_dialog(uploaded_file):
     st.subheader("💬 Chat with AI Recruiter")
     st.caption(f"Currently analyzing: **{uploaded_file.name}**")
     
-    # Display chat history
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    # Keep chat history and input separated so the input always stays below
+    chat_container = st.container()
+    input_container = st.container()
     
-    # Chat input
-    if prompt := st.chat_input("Ask questions about this CV or request additional analysis..."):
-        # Add user message to chat
+    with chat_container:
+        for message in st.session_state.messages:
+            if message["role"] == "user":
+                st.markdown(
+                    f"""<div class="user-message-container">
+<div class="user-message-bubble">{html.escape(message["content"])}</div>
+</div>""",
+                    unsafe_allow_html=True
+                )
+            else:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+    
+    with input_container:
+        prompt = st.chat_input("Ask questions about this CV or request additional analysis...")
+    
+    if prompt:
+        # Add user message to chat and render it within the chat container
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
         
-        # Get agent response
-        with st.chat_message("assistant"):
-            with st.spinner("🤖 AI Agent thinking..."):
-                # Let the agent handle the question directly
-                response = run_agent_sync(st.session_state.runner, prompt)
-                
-                if response:
-                    st.markdown(response)
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-                else:
-                    fallback_msg = "I processed your request but couldn't generate a response. Please try rephrasing."
-                    st.warning(fallback_msg)
-                    st.session_state.messages.append({"role": "assistant", "content": fallback_msg})
+        with chat_container:
+            st.markdown(
+                f"""<div class="user-message-container">
+<div class="user-message-bubble">{html.escape(prompt)}</div>
+</div>""",
+                unsafe_allow_html=True
+            )
+        
+        # Get agent response via the orchestrator and display it within the chat container
+        with chat_container:
+            with st.chat_message("assistant"):
+                with st.spinner("🤖 AI Agent thinking..."):
+                    response = run_agent_sync(st.session_state.runner, prompt)
+                    
+                    if response:
+                        st.markdown(response)
+                        st.session_state.messages.append({"role": "assistant", "content": response})
+                    else:
+                        fallback_msg = "I processed your request but couldn't generate a response. Please try rephrasing."
+                        st.warning(fallback_msg)
+                        st.session_state.messages.append({"role": "assistant", "content": fallback_msg})
 
 def main():
     """Main application function"""
