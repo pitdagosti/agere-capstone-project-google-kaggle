@@ -58,7 +58,10 @@ if 'show_analysis' not in st.session_state:
 if 'uploaded_file_content' not in st.session_state:
     st.session_state.uploaded_file_content = None
 
-LOG_FILE = Path(__file__).parent / "runner_events.log"
+# Create log_files directory if it doesn't exist
+LOG_DIR = Path(__file__).parent / "log_files"
+LOG_DIR.mkdir(exist_ok=True)
+LOG_FILE = LOG_DIR / "runner_events.log"
 
 # --- LOGGING FUNCTIONS ---
 
