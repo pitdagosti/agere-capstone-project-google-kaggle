@@ -2,7 +2,7 @@
 PROJECT AGERE (Agentic Recruiter)
 Main Streamlit Application
 
-This is the main entry point for the Agentic Recruiter application.
+Main entry point for the Agentic Recruiter application.
 Users can upload their CV/resume and interact with the AI-powered recruitment system.
 """
 
@@ -15,13 +15,13 @@ from pathlib import Path
 import json
 from datetime import datetime
 
-# Import your agents and tools
+# Import agents and tools
 from src.agents import *
 
 # Load environment variables
 load_dotenv()
 
-# Explicitly set environment variables for ADK (needed for Streamlit)
+# Set environment variables for ADK (required for Streamlit)
 api_key = os.getenv("GOOGLE_API_KEY")
 use_vertexai = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "FALSE")
 if api_key:
@@ -37,7 +37,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Load custom CSS from external file
+# Load custom CSS from file
 def load_css():
     """Load custom CSS styling from external file"""
     css_file = Path(__file__).parent / "src" / "styles" / "custom.css"
@@ -46,7 +46,7 @@ def load_css():
 
 load_css()
 
-# Initialize session state for chat and agent
+# Initialize session state variables
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'runner' not in st.session_state:
@@ -60,42 +60,39 @@ if 'uploaded_file_content' not in st.session_state:
 
 LOG_FILE = Path(__file__).parent / "runner_events.log"
 
-# --- INIZIO MODIFICHE LOGGING ---
+# --- LOGGING FUNCTIONS ---
 
 def log_agent_event(event):
     """
-    Log agent events parsing nested content parts for Tools and Text.
+    Log agent events by parsing nested content parts for Tools and Text.
     """
-    # 1. Struttura base del log
     log_entry = {
         "timestamp": datetime.now().timestamp(),
         "agent_name": getattr(event, "agent_name", "Orchestrator"),
         "tool_name": None,
-        "input_text": None,   # Usato per argomenti tool o input utente
-        "output_text": None,  # Usato per risposte text o risultati tool
+        "input_text": None,
+        "output_text": None,
         "type": "unknown"
     }
 
     has_content = False
 
-    # 2. Analisi delle parti del contenuto (Content Parts)
+    # Parse content parts
     if hasattr(event, "content") and event.content:
         if hasattr(event.content, "parts") and event.content.parts:
             for part in event.content.parts:
                 
-                # A. L'Agente Parla (Text)
+                # Agent Text
                 if hasattr(part, "text") and part.text:
                     log_entry["type"] = "response"
-                    # Concatena se ci sono più parti di testo
                     current = log_entry["output_text"] or ""
                     log_entry["output_text"] = current + part.text
                     has_content = True
 
-                # B. L'Agente chiama un Tool (Function Call)
+                # Tool Call
                 if hasattr(part, "function_call") and part.function_call:
                     log_entry["type"] = "tool_call"
                     log_entry["tool_name"] = part.function_call.name
-                    # Estrae gli argomenti della funzione
                     try:
                         args_dict = dict(part.function_call.args.items())
                         log_entry["input_text"] = json.dumps(args_dict, ensure_ascii=False)
@@ -103,11 +100,10 @@ def log_agent_event(event):
                         log_entry["input_text"] = str(part.function_call.args)
                     has_content = True
 
-                # C. Il Tool risponde (Function Response)
+                # Tool Response
                 if hasattr(part, "function_response") and part.function_response:
                     log_entry["type"] = "tool_result"
                     log_entry["tool_name"] = part.function_response.name
-                    # Estrae il risultato
                     try:
                         resp_dict = dict(part.function_response.response.items())
                         log_entry["output_text"] = json.dumps(resp_dict, ensure_ascii=False)
@@ -115,9 +111,8 @@ def log_agent_event(event):
                         log_entry["output_text"] = str(part.function_response.response)
                     has_content = True
 
-    # 3. Analisi Input Utente (se presente nell'evento, meno comune in output stream)
+    # Fallback for user input
     if not has_content and hasattr(event, "user_content"):
-        # Logica di fallback se l'evento porta solo input utente
         log_entry["type"] = "user_input"
         input_text = getattr(event.user_content, "text", None)
         if not input_text and hasattr(event.user_content, "parts"):
@@ -126,7 +121,7 @@ def log_agent_event(event):
         log_entry["input_text"] = input_text
         if input_text: has_content = True
 
-    # 4. Scrittura su file solo se c'è contenuto utile
+    # Write log only if content exists
     if has_content:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
@@ -135,9 +130,7 @@ def extract_agent_response(events):
     """Extract text response from agent events"""
     full_text = []
     for event in events:
-        log_agent_event(event)  # log every event with new logic
-        
-        # Estrazione specifica del testo per la UI di Streamlit
+        log_agent_event(event)
         if hasattr(event, 'content') and event.content and event.content.parts:
             for part in event.content.parts:
                 if hasattr(part, 'text') and part.text:
@@ -145,10 +138,10 @@ def extract_agent_response(events):
     
     return "".join(full_text) if full_text else None
 
-# --- FINE MODIFICHE LOGGING ---
+# --- AGENT EXECUTION FUNCTIONS ---
 
 async def run_agent_async(runner, prompt):
-    """Run agent and return response"""
+    """Run agent asynchronously and return response"""
     try:
         response = await runner.run_debug(prompt)
         return extract_agent_response(response)
@@ -167,11 +160,10 @@ def run_agent_sync(runner, prompt):
         return f"⚠️ Error running agent: {str(e)}"
 
 def analyze_cv_with_runner(runner, filename):
-    """Call the orchestrator agent to start the CV analysis workflow"""
+    """Call orchestrator agent to start CV analysis workflow"""
     try:
         prompt = f"""I've uploaded my CV file: {filename}
-        
-Please analyze it and help me find suitable job opportunities."""
+Please analyze it and suggest suitable job opportunities."""
         
         with st.spinner("🤖 Orchestrator Agent starting workflow..."):
             response = run_agent_sync(runner, prompt)
@@ -179,14 +171,15 @@ Please analyze it and help me find suitable job opportunities."""
         if response:
             return response
         else:
-            return "⚠️ Analysis completed but no response was generated."
-            
+            return "⚠️ Analysis completed but no response generated."
     except Exception as e:
         return f"⚠️ Error during analysis: {str(e)}"
 
+# --- STREAMLIT UI FUNCTIONS ---
+
 @st.dialog("📊 CV Analysis & Chat", width="large")
 def show_analysis_dialog(uploaded_file):
-    """Display CV analysis and chat in a modal dialog"""
+    """Display CV analysis and chat dialog"""
     
     if st.session_state.runner is None:
         st.session_state.runner = InMemoryRunner(agent=orchestrator)
@@ -265,7 +258,7 @@ def show_analysis_dialog(uploaded_file):
                         st.session_state.messages.append({"role": "assistant", "content": fallback_msg})
 
 def main():
-    """Main application function"""
+    """Main Streamlit application"""
     
     st.markdown("""
         <div class="main-header">
