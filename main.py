@@ -2,7 +2,7 @@
 PROJECT AGERE (Agentic Recruiter)
 Main Streamlit Application
 
-This is the main entry point for the Agentic Recruiter application.
+Main entry point for the Agentic Recruiter application.
 Users can upload their CV/resume and interact with the AI-powered recruitment system.
 """
 
@@ -12,14 +12,16 @@ import asyncio
 import html
 from dotenv import load_dotenv
 from pathlib import Path
+import json
+from datetime import datetime
 
-# Import your agents and tools
+# Import agents and tools
 from src.agents import *
 
 # Load environment variables
 load_dotenv()
 
-# Explicitly set environment variables for ADK (needed for Streamlit)
+# Set environment variables for ADK (required for Streamlit)
 api_key = os.getenv("GOOGLE_API_KEY")
 use_vertexai = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "FALSE")
 if api_key:
@@ -35,7 +37,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Load custom CSS from external file
+# Load custom CSS from file
 def load_css():
     """Load custom CSS styling from external file"""
     css_file = Path(__file__).parent / "src" / "styles" / "custom.css"
@@ -44,7 +46,7 @@ def load_css():
 
 load_css()
 
-# Initialize session state for chat and agent
+# Initialize session state variables
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'runner' not in st.session_state:
@@ -56,17 +58,93 @@ if 'show_analysis' not in st.session_state:
 if 'uploaded_file_content' not in st.session_state:
     st.session_state.uploaded_file_content = None
 
+# Create log_files directory if it doesn't exist
+LOG_DIR = Path(__file__).parent / "log_files"
+LOG_DIR.mkdir(exist_ok=True)
+LOG_FILE = LOG_DIR / "runner_events.log"
+
+# --- LOGGING FUNCTIONS ---
+
+def log_agent_event(event):
+    """
+    Log agent events by parsing nested content parts for Tools and Text.
+    """
+    log_entry = {
+        "timestamp": datetime.now().timestamp(),
+        "agent_name": getattr(event, "agent_name", "Orchestrator"),
+        "tool_name": None,
+        "input_text": None,
+        "output_text": None,
+        "type": "unknown"
+    }
+
+    has_content = False
+
+    # Parse content parts
+    if hasattr(event, "content") and event.content:
+        if hasattr(event.content, "parts") and event.content.parts:
+            for part in event.content.parts:
+                
+                # Agent Text
+                if hasattr(part, "text") and part.text:
+                    log_entry["type"] = "response"
+                    current = log_entry["output_text"] or ""
+                    log_entry["output_text"] = current + part.text
+                    has_content = True
+
+                # Tool Call
+                if hasattr(part, "function_call") and part.function_call:
+                    log_entry["type"] = "tool_call"
+                    log_entry["tool_name"] = part.function_call.name
+                    try:
+                        args_dict = dict(part.function_call.args.items())
+                        log_entry["input_text"] = json.dumps(args_dict, ensure_ascii=False)
+                    except Exception:
+                        log_entry["input_text"] = str(part.function_call.args)
+                    has_content = True
+
+                # Tool Response
+                if hasattr(part, "function_response") and part.function_response:
+                    log_entry["type"] = "tool_result"
+                    log_entry["tool_name"] = part.function_response.name
+                    try:
+                        resp_dict = dict(part.function_response.response.items())
+                        log_entry["output_text"] = json.dumps(resp_dict, ensure_ascii=False)
+                    except Exception:
+                        log_entry["output_text"] = str(part.function_response.response)
+                    has_content = True
+
+    # Fallback for user input
+    if not has_content and hasattr(event, "user_content"):
+        log_entry["type"] = "user_input"
+        input_text = getattr(event.user_content, "text", None)
+        if not input_text and hasattr(event.user_content, "parts"):
+             texts = [p.text for p in event.user_content.parts if hasattr(p, "text") and p.text]
+             if texts: input_text = " ".join(texts)
+        log_entry["input_text"] = input_text
+        if input_text: has_content = True
+
+    # Write log only if content exists
+    if has_content:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+
 def extract_agent_response(events):
     """Extract text response from agent events"""
+    full_text = []
     for event in events:
+        log_agent_event(event)
         if hasattr(event, 'content') and event.content and event.content.parts:
             for part in event.content.parts:
                 if hasattr(part, 'text') and part.text:
-                    return part.text
-    return None
+                    full_text.append(part.text)
+    
+    return "".join(full_text) if full_text else None
+
+# --- AGENT EXECUTION FUNCTIONS ---
 
 async def run_agent_async(runner, prompt):
-    """Run agent and return response"""
+    """Run agent asynchronously and return response"""
     try:
         response = await runner.run_debug(prompt)
         return extract_agent_response(response)
@@ -85,59 +163,49 @@ def run_agent_sync(runner, prompt):
         return f"⚠️ Error running agent: {str(e)}"
 
 def analyze_cv_with_runner(runner, filename):
-    """Call the orchestrator agent to start the CV analysis workflow"""
+    """Call orchestrator agent to start CV analysis workflow"""
     try:
-        # Trigger the orchestrator's workflow - it will delegate to CV_analysis_agent
         prompt = f"""I've uploaded my CV file: {filename}
+Please analyze it and suggest suitable job opportunities."""
         
-Please analyze it and help me find suitable job opportunities."""
-        
-        # Run orchestrator agent
         with st.spinner("🤖 Orchestrator Agent starting workflow..."):
             response = run_agent_sync(runner, prompt)
         
         if response:
             return response
         else:
-            return "⚠️ Analysis completed but no response was generated."
-            
+            return "⚠️ Analysis completed but no response generated."
     except Exception as e:
         return f"⚠️ Error during analysis: {str(e)}"
 
+# --- STREAMLIT UI FUNCTIONS ---
+
 @st.dialog("📊 CV Analysis & Chat", width="large")
 def show_analysis_dialog(uploaded_file):
-    """Display CV analysis and chat in a modal dialog"""
+    """Display CV analysis and chat dialog"""
     
-    # Initialize runner if not exists
     if st.session_state.runner is None:
         st.session_state.runner = InMemoryRunner(agent=orchestrator)
     
-    # Save uploaded file to temp_uploads folder for agent to access
     temp_uploads_dir = Path(__file__).parent / "temp_uploads"
     temp_uploads_dir.mkdir(exist_ok=True)
     
     temp_file_path = temp_uploads_dir / uploaded_file.name
     
-    # Save the file if it hasn't been saved yet
     if st.session_state.current_cv_file != uploaded_file.name:
         with open(temp_file_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
     
-    # Perform initial analysis if it's a new file
     if st.session_state.current_cv_file != uploaded_file.name:
         st.session_state.current_cv_file = uploaded_file.name
-        st.session_state.messages = []  # Clear previous messages
+        st.session_state.messages = []
         
-        # Perform initial analysis
         st.subheader("🔍 Initial CV Analysis")
         st.caption(f"Analyzing: **{uploaded_file.name}** ({uploaded_file.type})")
         
-        # Simple call to agent - it knows what to do
         analysis_result = analyze_cv_with_runner(st.session_state.runner, uploaded_file.name)
         
-        # Display analysis
         if analysis_result:
-            # Add to message history
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": analysis_result
@@ -145,12 +213,10 @@ def show_analysis_dialog(uploaded_file):
         else:
             st.warning("Analysis completed but no response generated.")
     
-    # Chat interface for continued interaction
     st.markdown("---")
     st.subheader("💬 Chat with AI Recruiter")
     st.caption(f"Currently analyzing: **{uploaded_file.name}**")
     
-    # Keep chat history and input separated so the input always stays below
     chat_container = st.container()
     input_container = st.container()
     
@@ -171,7 +237,6 @@ def show_analysis_dialog(uploaded_file):
         prompt = st.chat_input("Ask questions about this CV or request additional analysis...")
     
     if prompt:
-        # Add user message to chat and render it within the chat container
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         with chat_container:
@@ -182,7 +247,6 @@ def show_analysis_dialog(uploaded_file):
                 unsafe_allow_html=True
             )
         
-        # Get agent response via the orchestrator and display it within the chat container
         with chat_container:
             with st.chat_message("assistant"):
                 with st.spinner("🤖 AI Agent thinking..."):
@@ -197,9 +261,8 @@ def show_analysis_dialog(uploaded_file):
                         st.session_state.messages.append({"role": "assistant", "content": fallback_msg})
 
 def main():
-    """Main application function"""
+    """Main Streamlit application"""
     
-    # Header
     st.markdown("""
         <div class="main-header">
             <h1>PROJECT AGERE</h1>
@@ -207,7 +270,6 @@ def main():
         </div>
     """, unsafe_allow_html=True)
     
-    # How it works section
     st.markdown("### 🚀 How it works")
     steps_col1, steps_col2, steps_col3, steps_col4 = st.columns(4)
     
@@ -245,10 +307,8 @@ def main():
     
     st.markdown("---")
     
-    # Main content area
     st.header("📄 Upload Resume/CV")
     
-    # File uploader
     uploaded_file = st.file_uploader(
         "Drop your file here or click to upload",
         type=["pdf", "txt"],
@@ -257,7 +317,6 @@ def main():
     )
     
     if uploaded_file is not None:
-        # Display file details
         st.success(f"✅ File uploaded: {uploaded_file.name}")
         
         file_details = {
@@ -270,7 +329,6 @@ def main():
             for key, value in file_details.items():
                 st.write(f"**{key}:** {value}")
         
-        # Action buttons
         col_btn1, col_btn2 = st.columns(2)
         
         with col_btn1:
@@ -279,14 +337,12 @@ def main():
                 
         with col_btn2:
             if st.button("🗑️ Clear & Reset", use_container_width=True):
-                # Delete ALL files from temp_uploads folder
                 temp_uploads_dir = Path(__file__).parent / "temp_uploads"
                 if temp_uploads_dir.exists():
                     try:
-                        # Delete all files in the temp_uploads directory
                         deleted_count = 0
                         for file in temp_uploads_dir.iterdir():
-                            if file.is_file():  # Only delete files, not directories
+                            if file.is_file():
                                 file.unlink()
                                 deleted_count += 1
                         if deleted_count > 0:
@@ -294,17 +350,14 @@ def main():
                     except Exception as e:
                         st.error(f"Could not delete files: {e}")
                 
-                # Clear session state completely
                 st.session_state.messages = []
                 st.session_state.current_cv_file = None
                 st.session_state.show_analysis = False
                 st.session_state.uploaded_file_content = None
-                # Clear the file uploader by resetting its key
                 if 'cv_uploader' in st.session_state:
                     del st.session_state['cv_uploader']
                 st.rerun()
     
-    # Features Section
     st.markdown("---")
     st.subheader("✨ Features")
     
@@ -337,7 +390,6 @@ def main():
             </div>
         """, unsafe_allow_html=True)
 
-    # Footer
     st.markdown("""
         <div class="footer">
             <p>🤖 PROJECT AGERE - Agentic Recruiter | Powered by Google Vertex AI</p>
