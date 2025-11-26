@@ -38,7 +38,7 @@ retry_config=types.HttpRetryOptions(
 # TODO: AGENT TO SCREEN THE RESUME AND CHECK IF IT MATCHES THE JOB DESCRIPTION
 CV_analysis_agent = Agent(
     name="CV_analysis_agent",
-    model=Gemini(model="gemini-2.5-flash-lite"),
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
     description="Professional HR assistant that reads, analyzes, and provides insights on candidate CVs.",
     instruction="""
     You are a professional HR assistant specializing in CV analysis and candidate evaluation.
@@ -119,7 +119,7 @@ print("✅ Root Agent defined with custom CV tools.")
 
 job_listing_agent = Agent(
     name="job_listing_agent",
-    model=Gemini(model="gemini-2.5-flash-lite"),
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
     description="Agent Assistant that lists job opportunities from the SQLite database and matches candidate skills.",
     instruction="""
     Agent Assistant that provides job listings to candidates.
@@ -167,7 +167,7 @@ code_execution_tool = FunctionTool(func=run_code_assignment)
 # --- AGENT ---
 code_assessment_agent = Agent(
     name="code_assessment_agent",
-    model="gemini-2.5-flash-lite",  # usa lo stesso modello che usi per altri agent
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
     description="""
 Professional coding interviewer assistant. Generates code exercises based on the candidate's profile and job requirements,
 executes submitted code in a sandbox environment, and provides feedback on correctness, runtime, and potential issues.
@@ -225,6 +225,23 @@ orchestrator = LlmAgent(
        - Ask: "Which job interests you most? (Choose by selecting the number)".
        - Map the user's numeric selection to the corresponding job in the list.
        - Store the selected job for the next steps (e.g., code assessment).
+
+    3. STEP 3: Code Assessment
+       - If user selects a job AND the job requires coding skills: call 'code_assessment_agent' passing the job details.
+       - The agent should generate a code assessment for the candidate.
+       - The assessment should be written in the language mentioned in the uploaded CV.
+       - The candidate should be able to provide a message in the chat window to the agent as response to the assessment.
+       - Provide assessment evaluation and feedback to the candidate.
+
+    4. STEP 4: Language Assessment
+       - If user selects a job AND the job requires language skills: call 'language_assessment_agent' passing the job details.
+       - The agent should generate a language assessment for the candidate.
+       - The assessment should be written in the language mentioned in the uploaded CV.
+       - The candidate should be able to provide a message in the chat window to the agent as response to the assessment.
+       - Provide assessment evaluation and feedback to the candidate.
+       - Ask: "Would you like me to schedule a live interview for you?"
+       - If user agrees, call 'scheduler_agent' to schedule the interview.
+       - The agent should schedule the interview for the candidate.
     
     CRITICAL RULES:
     - ALWAYS delegate to sub-agents using their exact names.
