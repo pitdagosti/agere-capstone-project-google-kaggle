@@ -4,28 +4,20 @@ from pathlib import Path
 from typing import Dict, Union, Annotated
 from google.genai import types
 from google.adk.tools import FunctionTool
-import re
 import sqlite3
 import json
 import os
 
 
 # =============================================================================
-# CUSTOM ADK FUNCTIONS - Queste sono le funzioni Python sottostanti (RINOMINATE)
+# CUSTOM ADK FUNCTIONS
 # =============================================================================
 
 def read_cv_fn(filename: Annotated[str, "Name of the CV file to read and analyze (supports .txt and .pdf formats)"]) -> str:
     """
     Read a CV file that has been uploaded for analysis.
-    This tool allows the agent to read candidate CVs in both TXT and PDF formats.
-    
-    Args:
-        filename: Name of the CV file (e.g., 'cv_john_doe.txt' or 'candidate_resume.pdf')
-        
-    Returns:
-        str: Content of the CV file (both .txt and .pdf files are supported)
+    Returns a readable text output.
     """
-
     base_path = Path(__file__).parent.parent.parent
     temp_uploads_path = base_path / "temp_uploads" / filename
     dummy_files_path = base_path / "dummy_files_for_testing" / filename
@@ -40,33 +32,31 @@ def read_cv_fn(filename: Annotated[str, "Name of the CV file to read and analyze
     try:
         if file_path.suffix == '.txt':
             content = file_path.read_text(encoding='utf-8')
+            if not content.strip():
+                content = "Not provided"
             return f"✅ Successfully read {filename}:\n\n{content}"
         
         elif file_path.suffix == '.pdf':
             try:
                 import pdfplumber
+                text = ""
                 with pdfplumber.open(file_path) as pdf:
-                    text = ""
                     for page in pdf.pages:
                         text += page.extract_text() or ""
-                    return f"✅ Successfully read {filename}:\n\n{text}"
+                if not text.strip():
+                    text = "Not provided"
+                return f"✅ Successfully read {filename}:\n\n{text}"
             except ImportError:
                 return "⚠️ PDF reading requires pdfplumber. Install with: pip install pdfplumber"
         else:
             return f"❌ Unsupported file type: {file_path.suffix}. Supported types: .txt, .pdf"
-            
     except Exception as e:
         return f"❌ Error reading file: {str(e)}"
 
 def list_available_cvs_fn() -> str:
     """
-    List all available CV files in the dummy_files_for_testing folder.
-    Use this tool to see what CVs are available to analyze.
-    
-    Returns:
-        str: List of available CV files
+    List all available CV files in dummy_files_for_testing folder.
     """
-
     base_path = Path(__file__).parent.parent.parent / "dummy_files_for_testing"
     
     if not base_path.exists():
@@ -99,16 +89,7 @@ def compare_candidates_fn(
 ) -> str:
     """
     Compare two candidate CVs based on specific criteria.
-    
-    Args:
-        filename1: First CV filename
-        filename2: Second CV filename  
-        criteria: What to compare (e.g., 'Python experience', 'language skills')
-        
-    Returns:
-        str: Both CVs with comparison context
     """
-
     cv1 = read_cv_fn(filename1)
     cv2 = read_cv_fn(filename2)
     
@@ -124,13 +105,12 @@ Comparing two candidates on: {criteria}
 Please compare these candidates specifically on: {criteria}
 """
 
-
 def list_jobs_from_db(cv_summary: str = None, max_results: int = 5) -> str:
     """
     List jobs from SQLite DB, ranked by skills match. Returns numbered list for selection.
     """
     try:
-        conn = sqlite3.connect("jobs/jobs.db")  # Assicurati che il percorso punti al db corretto
+        conn = sqlite3.connect("jobs/jobs.db")
         cursor = conn.cursor()
         cursor.execute("SELECT id, title, company, location, description, responsibilities, skills_required FROM jobs")
         jobs = cursor.fetchall()
@@ -143,13 +123,17 @@ def list_jobs_from_db(cv_summary: str = None, max_results: int = 5) -> str:
 
     for job in jobs:
         job_id, title, company, location, description, responsibilities, skills_json = job
-        skills = json.loads(skills_json)
+        try:
+            skills = json.loads(skills_json)
+        except Exception:
+            skills = []
+
         score = 0
         if cv_summary:
             cv_skills = [s.strip().lower() for s in cv_summary.split(",")]
             score = len(set(cv_skills) & set([s.lower() for s in skills]))
         else:
-            score = 1  # default if no CV skills provided
+            score = 1
 
         if score > 0:
             matched_jobs.append((score, {
@@ -166,7 +150,6 @@ def list_jobs_from_db(cv_summary: str = None, max_results: int = 5) -> str:
     if not matched_jobs:
         return "❌ No matching jobs found."
 
-    # Costruisci risposta numerata
     response = ""
     for i, (_, job) in enumerate(matched_jobs[:max_results], start=1):
         response += (
@@ -174,19 +157,20 @@ def list_jobs_from_db(cv_summary: str = None, max_results: int = 5) -> str:
             f"   Location: {job['location']}\n"
             f"   Description: {job['description']}\n"
             f"   Responsibilities: {job['responsibilities']}\n"
-            f"   Required Skills: {', '.join(job['skills'])}\n\n"
+            f"   Required Skills: {', '.join(job['skills']) or 'Not provided'}\n\n"
         )
+    
+    response += "Please choose the job you are interested in by typing its number (1, 2, 3, ...)."
     return response
 
 
-
 # =============================================================================
-# HELPER FUNCTIONS - Not ADK tools, just utility functions
+# HELPER FUNCTIONS
 # =============================================================================
 
 def read_cv_file(file_path: Union[str, Path]) -> str:
     """
-    Helper function to read CV file (not an ADK tool, just a utility)
+    Helper function to read CV file (not an ADK tool)
     """
     file_path = Path(file_path)
     
@@ -199,11 +183,11 @@ def read_cv_file(file_path: Union[str, Path]) -> str:
     elif file_path.suffix == '.pdf':
         try:
             import pdfplumber
+            text = ""
             with pdfplumber.open(file_path) as pdf:
-                text = ""
                 for page in pdf.pages:
                     text += page.extract_text() or ""
-                return text
+            return text or "Not provided"
         except ImportError:
             return "⚠️ PDF reading requires pdfplumber. Install with: pip install pdfplumber"
     
@@ -229,8 +213,9 @@ def load_all_cvs(folder_path: Union[str, Path] = "dummy_files_for_testing") -> D
     
     return cvs
 
+
 # =============================================================================
-# ADK FunctionTool Definitions - Questi sono gli oggetti da importare negli agent
+# ADK FunctionTool Definitions
 # =============================================================================
 
 read_cv = FunctionTool(func=read_cv_fn)
