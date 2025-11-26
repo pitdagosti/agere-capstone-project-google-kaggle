@@ -1,7 +1,7 @@
 # CUSTOM TOOLS FOR AGENTS 🔧
 
 from pathlib import Path
-from typing import Dict, Union, Annotated
+from typing import Dict, Union
 from google.genai import types
 from google.adk.tools import FunctionTool
 import sqlite3
@@ -13,10 +13,15 @@ import os
 # CUSTOM ADK FUNCTIONS
 # =============================================================================
 
-def read_cv_fn(filename: Annotated[str, "Name of the CV file to read and analyze (supports .txt and .pdf formats)"]) -> str:
+def read_cv_fn(filename: str) -> str:
     """
     Read a CV file that has been uploaded for analysis.
-    Returns a readable text output.
+    
+    Args:
+        filename: Name of the CV file to read and analyze (supports .txt and .pdf formats)
+    
+    Returns:
+        A readable text output of the CV content.
     """
     base_path = Path(__file__).parent.parent.parent
     temp_uploads_path = base_path / "temp_uploads" / filename
@@ -83,12 +88,20 @@ def list_available_cvs_fn() -> str:
     return result
 
 def compare_candidates_fn(
-    filename1: Annotated[str, "First CV filename"],
-    filename2: Annotated[str, "Second CV filename"],
-    criteria: Annotated[str, "Comparison criteria (e.g., 'Python experience')"]
+    filename1: str,
+    filename2: str,
+    criteria: str
 ) -> str:
     """
     Compare two candidate CVs based on specific criteria.
+    
+    Args:
+        filename1: First CV filename
+        filename2: Second CV filename
+        criteria: Comparison criteria (e.g., 'Python experience')
+    
+    Returns:
+        A comparison of both candidates based on the specified criteria.
     """
     cv1 = read_cv_fn(filename1)
     cv2 = read_cv_fn(filename2)
