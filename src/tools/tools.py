@@ -3,12 +3,18 @@
 from pathlib import Path
 from typing import Dict, Union, Annotated
 from google.genai import types
+from google.adk.tools import FunctionTool
+import re
+import sqlite3
+import json
+import os
+
 
 # =============================================================================
-# CUSTOM ADK TOOLS - These can be used in Agent tools=[] parameter
+# CUSTOM ADK FUNCTIONS - Queste sono le funzioni Python sottostanti (RINOMINATE)
 # =============================================================================
 
-def read_cv(filename: Annotated[str, "Name of the CV file to read and analyze (supports .txt and .pdf formats)"]) -> str:
+def read_cv_fn(filename: Annotated[str, "Name of the CV file to read and analyze (supports .txt and .pdf formats)"]) -> str:
     """
     Read a CV file that has been uploaded for analysis.
     This tool allows the agent to read candidate CVs in both TXT and PDF formats.
@@ -19,13 +25,11 @@ def read_cv(filename: Annotated[str, "Name of the CV file to read and analyze (s
     Returns:
         str: Content of the CV file (both .txt and .pdf files are supported)
     """
-    # Check both temp_uploads (for Streamlit uploads) and dummy_files_for_testing (for testing)
-    # Base path should be the project root (two levels up from src/tools/tools.py)
+
     base_path = Path(__file__).parent.parent.parent
     temp_uploads_path = base_path / "temp_uploads" / filename
     dummy_files_path = base_path / "dummy_files_for_testing" / filename
     
-    # Try temp_uploads first (for uploaded files), then dummy_files_for_testing (silently as fallback)
     if temp_uploads_path.exists():
         file_path = temp_uploads_path
     elif dummy_files_path.exists():
@@ -54,8 +58,7 @@ def read_cv(filename: Annotated[str, "Name of the CV file to read and analyze (s
     except Exception as e:
         return f"❌ Error reading file: {str(e)}"
 
-
-def list_available_cvs() -> str:
+def list_available_cvs_fn() -> str:
     """
     List all available CV files in the dummy_files_for_testing folder.
     Use this tool to see what CVs are available to analyze.
@@ -63,7 +66,7 @@ def list_available_cvs() -> str:
     Returns:
         str: List of available CV files
     """
-    # Base path should be the project root (three levels up from src/tools/tools.py)
+
     base_path = Path(__file__).parent.parent.parent / "dummy_files_for_testing"
     
     if not base_path.exists():
@@ -89,8 +92,7 @@ def list_available_cvs() -> str:
     
     return result
 
-
-def compare_candidates(
+def compare_candidates_fn(
     filename1: Annotated[str, "First CV filename"],
     filename2: Annotated[str, "Second CV filename"],
     criteria: Annotated[str, "Comparison criteria (e.g., 'Python experience')"]
@@ -106,8 +108,9 @@ def compare_candidates(
     Returns:
         str: Both CVs with comparison context
     """
-    cv1 = read_cv(filename1)
-    cv2 = read_cv(filename2)
+
+    cv1 = read_cv_fn(filename1)
+    cv2 = read_cv_fn(filename2)
     
     return f"""
 Comparing two candidates on: {criteria}
@@ -120,6 +123,61 @@ Comparing two candidates on: {criteria}
 
 Please compare these candidates specifically on: {criteria}
 """
+
+
+def list_jobs_from_db(cv_summary: str = None, max_results: int = 5) -> str:
+    """
+    List jobs from SQLite DB, ranked by skills match. Returns numbered list for selection.
+    """
+    try:
+        conn = sqlite3.connect("jobs/jobs.db")  # Assicurati che il percorso punti al db corretto
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, title, company, location, description, responsibilities, skills_required FROM jobs")
+        jobs = cursor.fetchall()
+    except Exception as e:
+        return f"❌ Could not read jobs.db: {e}"
+    finally:
+        conn.close()
+
+    matched_jobs = []
+
+    for job in jobs:
+        job_id, title, company, location, description, responsibilities, skills_json = job
+        skills = json.loads(skills_json)
+        score = 0
+        if cv_summary:
+            cv_skills = [s.strip().lower() for s in cv_summary.split(",")]
+            score = len(set(cv_skills) & set([s.lower() for s in skills]))
+        else:
+            score = 1  # default if no CV skills provided
+
+        if score > 0:
+            matched_jobs.append((score, {
+                "id": job_id,
+                "title": title,
+                "company": company,
+                "location": location,
+                "description": description,
+                "responsibilities": responsibilities,
+                "skills": skills
+            }))
+
+    matched_jobs.sort(key=lambda x: x[0], reverse=True)
+    if not matched_jobs:
+        return "❌ No matching jobs found."
+
+    # Costruisci risposta numerata
+    response = ""
+    for i, (_, job) in enumerate(matched_jobs[:max_results], start=1):
+        response += (
+            f"{i}. {job['title']} at {job['company']}\n"
+            f"   Location: {job['location']}\n"
+            f"   Description: {job['description']}\n"
+            f"   Responsibilities: {job['responsibilities']}\n"
+            f"   Required Skills: {', '.join(job['skills'])}\n\n"
+        )
+    return response
+
 
 
 # =============================================================================
@@ -171,3 +229,11 @@ def load_all_cvs(folder_path: Union[str, Path] = "dummy_files_for_testing") -> D
     
     return cvs
 
+# =============================================================================
+# ADK FunctionTool Definitions - Questi sono gli oggetti da importare negli agent
+# =============================================================================
+
+read_cv = FunctionTool(func=read_cv_fn)
+list_available_cvs = FunctionTool(func=list_available_cvs_fn)
+compare_candidates = FunctionTool(func=compare_candidates_fn)
+job_listing_tool = FunctionTool(func=list_jobs_from_db)
