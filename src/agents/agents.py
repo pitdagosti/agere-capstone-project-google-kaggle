@@ -2,14 +2,17 @@
 
 # Packages Import
 from google.adk.agents import Agent, LlmAgent
-from google.adk.runners import InMemoryRunner
 from google.adk.tools import google_search, AgentTool, FunctionTool
 from google.genai import types
 from google.adk.models.google_llm import Gemini
+from src.tools.code_sandbox import execute_code
+from google.adk.runners import InMemoryRunner
+from pathlib import Path
+
 
 
 # Import custom tools
-from src.tools import read_cv, list_available_cvs, compare_candidates
+from src.tools import read_cv, list_available_cvs, compare_candidates, job_listing_tool # MODIFICATO: Usiamo l'oggetto FunctionTool 'job_listing_tool'
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -83,6 +86,9 @@ CV_analysis_agent = Agent(
     - Professional evaluation
     - Recommendations for roles/positions
     - Any gaps or areas for improvement
+
+    **8. Output**
+    - Return a JSON object with keys: full_name, skills, experience, education
     
     IMPORTANT RULES:
     - Always use the read_cv tool when asked to analyze a CV file
@@ -109,41 +115,80 @@ print("✅ Root Agent defined with custom CV tools.")
 
 # TODO: AGENT TO MATCH THE CANDIDATE TO THE JOB DESCRIPTION
 # This agent shuold provide N (say 5) suggestions of jobs that the candidate is a good fit for
+# Funzione per leggere i job locali
+
 job_listing_agent = Agent(
     name="job_listing_agent",
     model=Gemini(model="gemini-2.5-flash-lite"),
-    description="Agent Assistant that searches the internet with Google Search tool.",
+    description="Agent Assistant that lists job opportunities from the SQLite database and matches candidate skills.",
     instruction="""
-    Agent Assistant that searches the internet with Google Search tool.
-    Use Google Search to find job listings for the candidate based on the characteristics of his CV.
-    Provide a choice of 5 job listings for the candidate to choose from.
-    Wait for candidate choice. If the candidate makes a decision, inform the orchestrator agent,
-    otherwise, provide other 5 job listings for the candidate to choose from.
-    Repeat the process until the candidate makes a decision.
+    Agent Assistant that provides job listings to candidates.
+    Use the job_listing_tool to fetch jobs from the local SQLite database.
+    Always expect to receive a string of skills in 'cv_summary' input to match jobs.
+    If cv_summary is empty, fetch jobs without filtering.
     """,
-    tools=[google_search],
-)
-# TODO: AGENT TO PROVIDE A PROFILE LINK TO LINKEDIN FOR RECRUITER 
-# This Agent Features a Human-in-the-Loop (HITL) layer to ensure the candidate is comfortable with the message before sending it.
-recruiter_finder_agent = Agent(
-    name="recruiter_finder_agent",
-    model=Gemini(model="gemini-2.5-flash-lite"),
-    description="Candidate's assistant that finds a recruiter from the company the candidate is applying to.",
-    instruction="""
-    Candidate's assistant that finds a recruiter from the company the candidate is applying to. 
-    Use Google Search to find the recruiter's profile on LinkedIn. 
-    If the recruiter's profile is not found you must inform the user that the recruiter's profile is not found 
-    and you must provide the user with the company's website link.
-    """,
-    tools=[google_search],
+    tools=[job_listing_tool],
 )
 
-print("✅ Root Agent defined.")
+print("✅ job_listing_agent defined.")
+
 # TODO: AGENT TO CREATE AN ASSESSMENT FOR THE CANDIDATE (CODE INTERVIEW)
 # This agent shuold create a code interview assessment for the candidate. 
 # The assessment should be written in the language mentioned in the uploaded CV.
 # The assessment shuould be ran in a sandbox environment. 
 # Provide assessment evaluation and feedback to the candidate.
+
+def run_code_assignment(code: str) -> str:
+    """
+    Funzione che verrà esposta come tool a un agente.
+    Riceve il codice scritto dal candidato, lo esegue in sandbox,
+    e restituisce output e valutazione base.
+    """
+    result = execute_code(code)
+
+    # Analisi del risultato
+    if result["status"] == "success":
+        feedback = f"✅ Code executed successfully!\nOutput:\n{result['output']}"
+    elif result["status"] == "timeout":
+        feedback = f"⏱ Timeout: The code took longer than allowed ({result['error_msg']})"
+    elif result["status"] == "memory_error":
+        feedback = f"💾 Memory limit exceeded: {result['error_msg']}"
+    elif result["status"] == "security_violation":
+        feedback = f"⚠️ Security violation: {result['output']}"
+    else:
+        feedback = f"❌ Error during execution:\n{result['error_msg']}\nPartial output:\n{result['output']}"
+
+    return feedback
+
+# Tool ADK che espone la funzione all'agente
+code_execution_tool = FunctionTool(func=run_code_assignment)
+
+
+# --- AGENT ---
+code_assessment_agent = Agent(
+    name="code_assessment_agent",
+    model="gemini-2.5-flash-lite",  # usa lo stesso modello che usi per altri agent
+    description="""
+Professional coding interviewer assistant. Generates code exercises based on the candidate's profile and job requirements,
+executes submitted code in a sandbox environment, and provides feedback on correctness, runtime, and potential issues.
+""",
+    instruction="""
+You are a coding interviewer assistant. Your tasks:
+1. Generate a coding assignment based on the candidate's CV and the selected job.
+2. Tailor difficulty and topics to the candidate's skills.
+3. Specify the programming language explicitly (detect from CV).
+4. Ask the candidate to submit their solution.
+5. Use the tool `run_code_assignment` to execute their code safely in the sandbox.
+6. Evaluate the result and give detailed feedback:
+   - Success ✅
+   - Timeout ⏱
+   - Memory issues 💾
+   - Security violations ⚠️
+   - Other errors ❌
+7. Optionally, suggest improvements or next steps.
+""",
+    tools=[code_execution_tool]
+)
 
 # TODO: AGENT TO CREATE AN ASSESSMENT FOR THE CANDIDATE (LANGUAGE TEST)
 # This agent shuold create a language test assessment for the candidate. 
@@ -157,59 +202,40 @@ print("✅ Root Agent defined.")
 
 
 # TODO: ORCHESTRATOR AGENT
+# --- ORCHESTRATOR AGENT AGGIORNATO ---
 orchestrator = LlmAgent(
     name="manager",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
-    # The instruction explains WHO to call and WHY
     instruction="""
-    You are a job applicant assistant orchestrator. You coordinate a team of specialized agents to help 
+    You are a job applicant assistant orchestrator. Coordinate a team of specialized agents to help 
     candidates find their ideal job match. You MUST delegate tasks to your sub-agents.
     
-    YOUR TEAM OF AGENTS:
-    1. 'CV_analysis_agent': Analyzes CVs and extracts candidate information, skills, experience
-    2. 'job_listing_agent': Searches for job listings that match the candidate's profile
-    3. 'recruiter_finder_agent': Finds recruiters. 
+    WORKFLOW AUTOMATICO:
     
-    WORKFLOW - Follow these steps IN ORDER:
+    1. STEP 1: CV Analysis
+       - When a user uploads a CV, DELEGATE to 'CV_analysis_agent'.
+       - Extract key technical skills from the analysis automatically.
+       - Summarize candidate profile for confirmation.
+       - Then ask: "Would you like me to find job listings that match your profile?"
     
-    STEP 1: CV Analysis
-    - When a user uploads a CV or asks to analyze one, DELEGATE to 'CV_analysis_agent'
-    - Wait for the CV analysis to complete
-    - Once you receive the analysis, SUMMARIZE it for the user
-    - Then EXACTLY ask: "Would you like me to find job listings that match your profile?"
-    
-    STEP 2: Job Listings (only after CV analysis is complete)
-    - When user confirms or asks for job listings, you must DELEGATE to 'job_listing_agent'
-    - Ask the job_listing_agent to find 5 relevant jobs based on the CV analysis
-    - Present the 5 jobs to the user with clear descriptions
-    - Ask the user: "Which job interests you most? (Choose 1-5, or ask for more options)"
-    - If user wants more options, delegate to job_listing_agent again for 5 more listings
-    - If user selects a job, proceed to Step 3
-    
-    STEP 3: Recruiter Finder (only after user selects a job)
-    - DELEGATE to 'recruiter_finder_agent' with the selected company name
-    - Wait for recruiter information
-    - Present the recruiter's LinkedIn profile 
-    - Ask for user approval before proceeding
+    2. STEP 2: Job Listings Matching
+       - If user agrees, call 'job_listing_agent' passing the extracted skills as `cv_summary`.
+       - The agent should return up to 5 jobs ranked by matching skills.
+       - Present the jobs to the user numerated (1, 2, 3...) and with clear details: title, company, location, description, responsibilities, required skills.
+       - Ask: "Which job interests you most? (Choose by selecting the number)".
+       - Map the user's numeric selection to the corresponding job in the list.
+       - Store the selected job for the next steps (e.g., code assessment).
     
     CRITICAL RULES:
-    - ALWAYS delegate to sub-agents using their exact names
-    - NEVER skip steps - follow the workflow sequentially
-    - ALWAYS wait for user confirmation before moving to the next major step
-    - Keep the user informed of progress at each stage
-    - If a user asks a question about the CV, delegate back to CV_analysis_agent
-    - Be conversational and helpful, but stay focused on the workflow
-    - SPECIFY WHICH AGENT YOU CALLED BEFORE PROVIDING THE ANSWER TO THE USER.
-    
-    DELEGATION SYNTAX:
-    To use a sub-agent, clearly state which agent you're calling and what you need from them.
-    Example: "Let me ask the CV_analysis_agent to analyze your CV..."
+    - ALWAYS delegate to sub-agents using their exact names.
+    - NEVER skip steps.
+    - Extract and pass skills automatically from CV analysis to job listing agent.
+    - Parse numeric input to select the correct job from the numbered list.
     """,
-    # This automatically registers them as available "tools" for the manager
     tools=[
         AgentTool(CV_analysis_agent), 
-        AgentTool(recruiter_finder_agent), 
-        AgentTool(job_listing_agent)
+        AgentTool(job_listing_agent),
+        AgentTool(code_assessment_agent)
     ],
 )
 

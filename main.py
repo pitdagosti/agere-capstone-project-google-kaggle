@@ -2,7 +2,7 @@
 PROJECT AGERE (Agentic Recruiter)
 Main Streamlit Application
 
-This is the main entry point for the Agentic Recruiter application.
+Main entry point for the Agentic Recruiter application.
 Users can upload their CV/resume and interact with the AI-powered recruitment system.
 """
 
@@ -12,11 +12,11 @@ import asyncio
 import html
 from dotenv import load_dotenv
 from pathlib import Path
+import json
+from datetime import datetime
+from google.adk.runners import InMemoryRunner
 
-# Import your agents and tools
-from src.agents import *
-
-# Load environment variables
+from src.agents import *  # Tutti gli agenti, incluso orchestrator, sono importati qui.
 load_dotenv()
 
 # Explicitly set environment variables for ADK (needed for Streamlit)
@@ -56,25 +56,135 @@ if 'show_analysis' not in st.session_state:
 if 'uploaded_file_content' not in st.session_state:
     st.session_state.uploaded_file_content = None
 
+# Logging
+LOG_DIR = Path(__file__).parent / "log_files"
+LOG_DIR.mkdir(exist_ok=True)
+LOG_FILE = LOG_DIR / "runner_events.log"
+
+
+def log_agent_event(event):
+    """
+    Log agent events by parsing nested content parts for Tools and Text.
+    Fixed: handles NoneType safely
+    """
+    log_entry = {
+        "timestamp": datetime.now().timestamp(),
+        "agent_name": getattr(event, "agent_name", "Orchestrator"),
+        "tool_name": None,
+        "input_text": None,
+        "output_text": None,
+        "type": "unknown"
+    }
+
+    has_content = False
+
+    # Parse content parts
+    if hasattr(event, "content") and event.content:
+        parts = getattr(event.content, "parts", [])
+        if parts:
+            for part in parts:
+                # Agent Text
+                if hasattr(part, "text") and part.text:
+                    log_entry["type"] = "response"
+                    current = log_entry["output_text"] or ""
+                    log_entry["output_text"] = current + part.text
+                    has_content = True
+
+                # Tool Call
+                if hasattr(part, "function_call") and getattr(part, "function_call", None):
+                    log_entry["type"] = "tool_call"
+                    log_entry["tool_name"] = getattr(part.function_call, "name", None)
+                    try:
+                        args_dict = getattr(part.function_call, "args", {})
+                        if args_dict is not None:
+                            if hasattr(args_dict, "items"):
+                                args_dict = dict(args_dict.items())
+                            log_entry["input_text"] = json.dumps(args_dict, ensure_ascii=False)
+                        else:
+                            log_entry["input_text"] = None
+                    except Exception:
+                        log_entry["input_text"] = str(getattr(part.function_call, "args", None))
+                    has_content = True
+
+                # Tool Response
+                if hasattr(part, "function_response") and getattr(part, "function_response", None):
+                    log_entry["type"] = "tool_result"
+                    log_entry["tool_name"] = getattr(part.function_response, "name", None)
+                    try:
+                        resp_dict = getattr(part.function_response, "response", {})
+                        if resp_dict is not None:
+                            if hasattr(resp_dict, "items"):
+                                resp_dict = dict(resp_dict.items())
+                            log_entry["output_text"] = json.dumps(resp_dict, ensure_ascii=False)
+                        else:
+                            log_entry["output_text"] = None
+                    except Exception:
+                        log_entry["output_text"] = str(getattr(part.function_response, "response", None))
+                    has_content = True
+
+    # Fallback for user input
+    if not has_content and hasattr(event, "user_content"):
+        log_entry["type"] = "user_input"
+        input_text = getattr(event.user_content, "text", None)
+        if not input_text and hasattr(event.user_content, "parts"):
+            parts = getattr(event.user_content, "parts", [])
+            texts = [p.text for p in parts if hasattr(p, "text") and p.text]
+            if texts:
+                input_text = " ".join(texts)
+        log_entry["input_text"] = input_text
+        if input_text:
+            has_content = True
+
+    # Write log only if content exists
+    if has_content:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+
+
 def extract_agent_response(events):
-    """Extract text response from agent events"""
+    """
+    Extract all text from agent events.
+    Safely handles NoneType and missing parts.
+    """
+    if not events:
+        return None
+
+    full_text = []
+
     for event in events:
-        if hasattr(event, 'content') and event.content and event.content.parts:
-            for part in event.content.parts:
-                if hasattr(part, 'text') and part.text:
-                    return part.text
-    return None
+        log_agent_event(event)  # sempre loggare
+        content = getattr(event, 'content', None)
+        parts = getattr(content, 'parts', []) if content and getattr(content, 'parts', None) else []
+
+        for part in parts:
+            text = getattr(part, 'text', None)
+            if text:
+                full_text.append(text)
+            else:
+                # Debug: parti non testuali
+                print("DEBUG: non-text part detected", part)
+
+    return "".join(full_text) if full_text else None
+
 
 async def run_agent_async(runner, prompt):
-    """Run agent and return response"""
+    """Run agent and return response safely, never None"""
+    if runner is None:
+        return "⚠️ Error: agent runner is not initialized."
     try:
         response = await runner.run_debug(prompt)
-        return extract_agent_response(response)
+        text = extract_agent_response(response)
+        if text is None or text.strip() == "":
+            return "⚠️ The agent processed your request but produced no output."
+        return text
     except Exception as e:
-        return f"⚠️ Error: {str(e)}"
+        return f"⚠️ Error running agent asynchronously: {str(e)}"
+
 
 def run_agent_sync(runner, prompt):
-    """Synchronous wrapper for async agent calls"""
+    """Synchronous wrapper for async agent calls safely"""
+    if runner is None:
+        return "⚠️ Error: agent runner is not initialized."
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -82,80 +192,82 @@ def run_agent_sync(runner, prompt):
         loop.close()
         return result
     except Exception as e:
-        return f"⚠️ Error running agent: {str(e)}"
+        return f"⚠️ Error running agent synchronously: {str(e)}"
+
 
 def analyze_cv_with_runner(runner, filename):
-    """Call the orchestrator agent to start the CV analysis workflow"""
-    try:
-        # Trigger the orchestrator's workflow - it will delegate to CV_analysis_agent
-        prompt = f"""I've uploaded my CV file: {filename}
-        
+    """Call orchestrator agent to analyze CV safely, never returns None"""
+    if runner is None:
+        return "⚠️ Error: agent runner is not initialized."
+    
+    prompt = f"""I've uploaded my CV file: {filename}
+
 Please analyze it and help me find suitable job opportunities."""
-        
-        # Run orchestrator agent
+    
+    try:
         with st.spinner("🤖 Orchestrator Agent starting workflow..."):
             response = run_agent_sync(runner, prompt)
         
-        if response:
-            return response
-        else:
-            return "⚠️ Analysis completed but no response was generated."
-            
+        if response is None or response.strip() == "":
+            return "⚠️ Analysis completed but the agent did not generate a response."
+        return response
+    
     except Exception as e:
-        return f"⚠️ Error during analysis: {str(e)}"
+        return f"⚠️ Error during CV analysis: {str(e)}"
+
 
 @st.dialog("📊 CV Analysis & Chat", width="large")
 def show_analysis_dialog(uploaded_file):
-    """Display CV analysis and chat in a modal dialog"""
-    
-    # Initialize runner if not exists
+    """Display CV analysis and chat in a modal dialog safely"""
+
     if st.session_state.runner is None:
-        st.session_state.runner = InMemoryRunner(agent=orchestrator)
-    
-    # Save uploaded file to temp_uploads folder for agent to access
+        st.session_state.runner = InMemoryRunner(
+            agent=orchestrator,
+            app_name="agents"
+        )
+
     temp_uploads_dir = Path(__file__).parent / "temp_uploads"
     temp_uploads_dir.mkdir(exist_ok=True)
     
     temp_file_path = temp_uploads_dir / uploaded_file.name
-    
-    # Save the file if it hasn't been saved yet
+
+    # Salva file solo se è nuovo
     if st.session_state.current_cv_file != uploaded_file.name:
         with open(temp_file_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
-    
-    # Perform initial analysis if it's a new file
+
+    # Aggiorna stato sessione solo se file nuovo
     if st.session_state.current_cv_file != uploaded_file.name:
         st.session_state.current_cv_file = uploaded_file.name
-        st.session_state.messages = []  # Clear previous messages
-        
-        # Perform initial analysis
+        st.session_state.messages = []
+
         st.subheader("🔍 Initial CV Analysis")
         st.caption(f"Analyzing: **{uploaded_file.name}** ({uploaded_file.type})")
-        
-        # Simple call to agent - it knows what to do
+
+        # Chiamata agente
         analysis_result = analyze_cv_with_runner(st.session_state.runner, uploaded_file.name)
-        
-        # Display analysis
-        if analysis_result:
-            # Add to message history
+
+        if analysis_result is not None:
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": analysis_result
             })
         else:
-            st.warning("Analysis completed but no response generated.")
-    
-    # Chat interface for continued interaction
+            st.warning("Analysis completed but no response was generated.")
+
+    # Mostra chat
     st.markdown("---")
     st.subheader("💬 Chat with AI Recruiter")
     st.caption(f"Currently analyzing: **{uploaded_file.name}**")
-    
-    # Keep chat history and input separated so the input always stays below
+
     chat_container = st.container()
     input_container = st.container()
-    
+
+    # Mostra messaggi esistenti
     with chat_container:
-        for message in st.session_state.messages:
+        for message in st.session_state.messages or []:  # sicuro anche se None
+            if not message or "role" not in message or "content" not in message:
+                continue
             if message["role"] == "user":
                 st.markdown(
                     f"""<div class="user-message-container">
@@ -166,14 +278,13 @@ def show_analysis_dialog(uploaded_file):
             else:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
-    
+
+    # Input utente
     with input_container:
         prompt = st.chat_input("Ask questions about this CV or request additional analysis...")
-    
+
     if prompt:
-        # Add user message to chat and render it within the chat container
         st.session_state.messages.append({"role": "user", "content": prompt})
-        
         with chat_container:
             st.markdown(
                 f"""<div class="user-message-container">
@@ -181,20 +292,32 @@ def show_analysis_dialog(uploaded_file):
 </div>""",
                 unsafe_allow_html=True
             )
-        
-        # Get agent response via the orchestrator and display it within the chat container
+
         with chat_container:
             with st.chat_message("assistant"):
                 with st.spinner("🤖 AI Agent thinking..."):
-                    response = run_agent_sync(st.session_state.runner, prompt)
-                    
-                    if response:
-                        st.markdown(response)
-                        st.session_state.messages.append({"role": "assistant", "content": response})
-                    else:
-                        fallback_msg = "I processed your request but couldn't generate a response. Please try rephrasing."
-                        st.warning(fallback_msg)
-                        st.session_state.messages.append({"role": "assistant", "content": fallback_msg})
+                    try:
+                        if "```" in prompt or prompt.strip().startswith("import") or "def " in prompt:
+                            feedback = run_agent_sync(
+                                st.session_state.runner,
+                                f"Please execute this Python code safely in sandbox:\n{prompt}"
+                            )
+                            st.markdown(feedback)
+                            st.session_state.messages.append({"role": "assistant", "content": feedback})
+                        else:
+                            response = run_agent_sync(st.session_state.runner, prompt)
+                            if response is not None:
+                                st.markdown(response)
+                                st.session_state.messages.append({"role": "assistant", "content": response})
+                            else:
+                                fallback_msg = "I processed your request but couldn't generate a response. Please try rephrasing."
+                                st.warning(fallback_msg)
+                                st.session_state.messages.append({"role": "assistant", "content": fallback_msg})
+                    except Exception as e:
+                        st.error(f"⚠️ Agent failed: {e}")
+                        st.session_state.messages.append({"role": "assistant", "content": f"⚠️ Agent failed: {e}"})
+
+
 
 def main():
     """Main application function"""
