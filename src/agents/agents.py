@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 # Import custom tools
-from src.tools import read_cv, list_available_cvs, compare_candidates, job_listing_tool # MODIFICATO: Usiamo l'oggetto FunctionTool 'job_listing_tool'
+from src.tools import read_cv, list_available_cvs, compare_candidates, job_listing_tool, code_execution_tool # MODIFICATO: Usiamo l'oggetto FunctionTool 'job_listing_tool'
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -138,55 +138,42 @@ print("✅ job_listing_agent defined.")
 # The assessment shuould be ran in a sandbox environment. 
 # Provide assessment evaluation and feedback to the candidate.
 
-def run_code_assignment(code: str) -> str:
-    """
-    Funzione che verrà esposta come tool a un agente.
-    Riceve il codice scritto dal candidato, lo esegue in sandbox,
-    e restituisce output e valutazione base.
-    """
-    result = execute_code(code)
-
-    # Analisi del risultato
-    if result["status"] == "success":
-        feedback = f"✅ Code executed successfully!\nOutput:\n{result['output']}"
-    elif result["status"] == "timeout":
-        feedback = f"⏱ Timeout: The code took longer than allowed ({result['error_msg']})"
-    elif result["status"] == "memory_error":
-        feedback = f"💾 Memory limit exceeded: {result['error_msg']}"
-    elif result["status"] == "security_violation":
-        feedback = f"⚠️ Security violation: {result['output']}"
-    else:
-        feedback = f"❌ Error during execution:\n{result['error_msg']}\nPartial output:\n{result['output']}"
-
-    return feedback
-
-# Tool ADK che espone la funzione all'agente
-code_execution_tool = FunctionTool(func=run_code_assignment)
-
-
 # --- AGENT ---
+
 code_assessment_agent = Agent(
     name="code_assessment_agent",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
     description="""
-Professional coding interviewer assistant. Generates code exercises based on the candidate's profile and job requirements,
-executes submitted code in a sandbox environment, and provides feedback on correctness, runtime, and potential issues.
-""",
+        Professional coding interviewer assistant. Generates a single, simple code exercise,
+        executes the submitted solution in a sandbox, and provides a 'pass' or 'not pass' evaluation.
+        """,
     instruction="""
-You are a coding interviewer assistant. Your tasks:
-1. Generate a coding assignment based on the candidate's CV and the selected job.
-2. Tailor difficulty and topics to the candidate's skills.
-3. Specify the programming language explicitly (detect from CV).
-4. Ask the candidate to submit their solution.
-5. Use the tool `run_code_assignment` to execute their code safely in the sandbox.
-6. Evaluate the result and give detailed feedback:
-   - Success ✅
-   - Timeout ⏱
-   - Memory issues 💾
-   - Security violations ⚠️
-   - Other errors ❌
-7. Optionally, suggest improvements or next steps.
-""",
+    You are an expert coding assessment agent. You have two distinct modes of operation.
+
+    **MODE 1: Assignment Generation**
+    - This is your creative task. You will be asked to create an assignment for a specific job role.
+    - **Assignment Generation Rules:**
+      1. You MUST generate **one single, self-contained coding problem**. Not a multi-step quiz.
+      2. The problem MUST be **simple and solvable in a few lines of code**. Avoid complex projects like building a full API.
+      3. The problem MUST be **testable and verifiable** by the `run_code_assignment` tool. This means the solution should `print` a result or `return` a value that can be checked.
+      4. **GOOD EXAMPLE:** "Write a Python function that takes a list of numbers and returns their sum."
+      5. **BAD EXAMPLE:** "Build a complete REST API for a product catalog."
+    - After generating the simple assignment, ask the user to submit their code.
+
+    **MODE 2: Strict Evaluation**
+    - This happens when the user provides code. Your task is to evaluate it using a strict, non-negotiable process.
+    - **PROCESS:**
+      1. Take the user's code.
+      2. You **MUST** use the `run_code_assignment` tool to execute it.
+      3. The tool will return a result string. Look ONLY at the very first character of this string.
+      4. If the first character is '✅', your entire response MUST be the single word: `pass`.
+      5. If the first character is '❌', your entire response MUST be the single word: `not pass`.
+
+    **ABSOLUTE RULES FOR EVALUATION:**
+    - Your own opinion about the code's quality is **IRRELEVANT**.
+    - Your evaluation is based **SOLELY** on the tool's output (`✅` or `❌`).
+    - Your final output MUST BE either `pass` or `not pass`. No other words or explanations.
+    """,
     tools=[code_execution_tool]
 )
 
@@ -227,11 +214,11 @@ orchestrator = LlmAgent(
        - Store the selected job for the next steps (e.g., code assessment).
 
     3. STEP 3: Code Assessment
-       - If user selects a job AND the job requires coding skills: call 'code_assessment_agent' passing the job details.
-       - The agent should generate a code assessment for the candidate.
-       - The assessment should be written in the language mentioned in the uploaded CV.
-       - The candidate should be able to provide a message in the chat window to the agent as response to the assessment.
-       - Provide assessment evaluation and feedback to the candidate.
+        - 1) Generation: If the user selects a job that requires coding skills, your first action is to DELEGATE to `code_assessment_agent` to generate the assignment.
+        - 2) - Evaluation: After an assignment has been given, if the user's next message contains a block of code, you **MUST** assume it is a solution. Your only job is to DELEGATE the user's entire message to the `code_assessment_agent` for evaluation.
+        - 3) - Handling the Result: The `code_assessment_agent` will reply with a single word: `pass` or `not pass`.
+            - If the response is `pass`: Congratulate the user for passing and ask if they are ready to proceed to the next step.
+            - If the response is `not pass`: Inform the user that their submission did not pass. Politely ask them to review the assignment and submit a new solution. (Do not give technical feedback yourself).
 
     4. STEP 4: Language Assessment
        - If user selects a job AND the job requires language skills: call 'language_assessment_agent' passing the job details.
