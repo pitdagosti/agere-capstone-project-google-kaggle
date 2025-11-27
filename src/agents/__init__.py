@@ -11,7 +11,8 @@ from .agents import (
     InMemoryRunner,
     LlmAgent,
     google_search,
-    types
+    types,
+    code_assessment_agent
 )
 
 __all__ = [
@@ -22,6 +23,7 @@ __all__ = [
     'InMemoryRunner',
     'LlmAgent',
     'google_search',
-    'types'
+    'types',
+    'code_assessment_agent'
 ]
 
