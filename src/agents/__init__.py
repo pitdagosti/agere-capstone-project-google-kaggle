@@ -6,7 +6,6 @@ Contains all agent definitions for the Agentic Recruiter system.
 from .agents import (
     CV_analysis_agent,
     job_listing_agent,
-    recruiter_finder_agent,
     orchestrator,
     Agent,
     InMemoryRunner,
@@ -18,7 +17,6 @@ from .agents import (
 __all__ = [
     'CV_analysis_agent',
     'job_listing_agent',
-    'recruiter_finder_agent',
     'orchestrator',
     'Agent',
     'InMemoryRunner',
