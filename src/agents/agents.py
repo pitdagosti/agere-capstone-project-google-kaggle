@@ -163,33 +163,162 @@ code_assessment_agent = Agent(
     - **Assignment Generation Rules:**
       1. You MUST generate **one single, self-contained coding problem**. Not a multi-step quiz.
       2. The problem MUST be **simple and solvable in a few lines of code**. Avoid complex projects like building a full API.
-      3. The problem MUST be **testable and verifiable** by the `run_code_assignment` tool. This means the solution should `print` a result or `return` a value that can be checked.
-      4. **GOOD EXAMPLE:** "Write a Python function that takes a list of numbers and returns their sum."
-      5. **BAD EXAMPLE:** "Build a complete REST API for a product catalog."
-    - After generating the simple assignment, ask the user to submit their code.
+      3. **CRITICAL - TEST CASES**: You MUST provide test cases AT THE END of the problem. The candidate should include these test cases in their submission, which will print the expected output.
+      4. **CRITICAL**: The code will run in a RESTRICTED SANDBOX. You CANNOT use: import, os, sys, subprocess, open, input, eval, exec.
+         Only use BUILT-IN Python functions: print, range, len, sum, min, max, abs, round, int, str, list, dict, tuple, set, float, bool, sorted, enumerate, zip.
+      5. **CRITICAL - EXPECTED OUTPUT FORMAT**: When showing test cases, you MUST explicitly state the expected output line by line.
+      6. **GOOD EXAMPLE:** 
+         "Write a Python function `sum_even(numbers)` that returns the sum of all even integers in the list.
+         
+         Test your function with these cases:
+         ```python
+         print(sum_even([1, 2, 3, 4, 5, 6]))  # Expected: 12
+         print(sum_even([10, 15, 20]))  # Expected: 30
+         ```
+         
+         **Expected Output:**
+         ```
+         12
+         30
+         ```"
+      7. **GOOD EXAMPLE:** "Write a function `max_nested(lst)` that finds the maximum value in a nested list structure.
+         
+         Test your function:
+         ```python
+         print(max_nested([[1, 2], [3, 4, 5]]))  # Expected: 5
+         ```
+         
+         **Expected Output:**
+         ```
+         5
+         ```"
+      8. **BAD EXAMPLE:** "Build a complete REST API for a product catalog." (too complex)
+      9. **BAD EXAMPLE:** "Use OpenCV to convert an image to grayscale." (requires import)
+      10. **BAD EXAMPLE:** A problem without test cases that print expected output.
+      11. **BAD EXAMPLE:** A problem without an "Expected Output" section.
+    
+    - **CRITICAL - TWO-STEP PROCESS:**
+      STEP A: First, generate the problem text with test cases and expected output as shown above.
+      STEP B: In the SAME response, immediately call the `run_code_assignment` tool to store the expected output:
+              Example: If expected output is "12\n30", call:
+              `run_code_assignment(code="", expected_output="12\n30")`
+              
+      **YOU MUST DO BOTH STEPS IN ONE RESPONSE!**
+      
+    - After generating the problem AND storing the expected output, include this exact warning:
+      
+      **CONSTRAINTS:**
+      - DO NOT use any import statements (no libraries allowed)
+      - Only use Python built-in functions: print, range, len, sum, min, max, abs, round, int, str, list, dict, tuple, set, float, bool, sorted, enumerate, zip
+      - Your code will run in a restricted sandbox environment
+      
+      **IMPORTANT:**
+      - Include the test cases at the end of your code
+      - The test cases will print the expected output
+      - Make sure to define your function AND call it with the test cases
+      
+    - Then ask the user to submit their complete code (function + test cases).
 
-    **MODE 2: Strict Evaluation**
-    - This happens when the user provides code. Your task is to evaluate it using a strict, non-negotiable process.
+    **MODE 2: Strict Evaluation with Output Comparison**
+    - This happens when the user provides code. Your task is to evaluate it using a strict, deterministic process.
     - **PROCESS:**
       1. Take the user's code.
-      2. You **MUST** use the `run_code_assignment` tool to execute it.
-      3. The tool will return a result string. Look ONLY at the very first character of this string.
-      4. If the first character is '✅', your entire response MUST be the single word: `pass`.
-      5. If the first character is '❌', your entire response MUST be the single word: `not pass`.
+      2. You **MUST** use the `run_code_assignment` tool to execute it (pass only the code).
+      3. The tool will return execution results.
+      4. **CRITICAL - EXTRACT EXPECTED OUTPUT:**
+         a. Look back at the problem you generated (it's in your conversation history, just a few messages up).
+         b. Find the section labeled "**Expected Output:**"
+         c. Extract the exact text between the code fences after that heading.
+         d. This is what the user's code should produce.
+      5. **COMPARISON LOGIC:**
+         - If tool result starts with "❌" (execution error) → Response: `not pass`
+         - If tool result starts with "✅ PASS" (Context comparison worked) → Response: `pass`
+         - If tool result starts with "✅ Code executed successfully":
+           * Extract actual output (after "Output:")
+           * Compare line-by-line with expected output from step 4
+           * Ignore leading/trailing whitespace on each line
+           * If they match → Response: `pass`
+           * If they don't match OR output is empty → Response: `not pass`
+      6. **Examples:**
+         - Expected from problem: "5\n5\n1\n0"
+         - Tool returns: "✅ Code executed successfully!\nOutput:\n5\n5\n1\n0" → `pass` ✅
+         - Tool returns: "✅ Code executed successfully!\nOutput:\n5\n4\n1\n0" → `not pass` ❌ (line 2 wrong)
+         - Tool returns: "✅ Code executed successfully!\nOutput:\n" → `not pass` ❌ (empty)
+         - Tool returns: "❌ Execution Error: ..." → `not pass` ❌
 
     **ABSOLUTE RULES FOR EVALUATION:**
-    - Your own opinion about the code's quality is **IRRELEVANT**.
-    - Your evaluation is based **SOLELY** on the tool's output (`✅` or `❌`).
+    - Extract expected output from YOUR OWN previous message (the problem you generated)
+    - Compare actual output line-by-line (after stripping whitespace)
+    - Be precise: "5" ≠ "5.0" (unless problem allows it)
     - Your final output MUST BE either `pass` or `not pass`. No other words or explanations.
     """,
     tools=[code_execution_tool]
 )
 
-# TODO: AGENT TO CREATE AN ASSESSMENT FOR THE CANDIDATE (LANGUAGE TEST)
-# This agent shuold create a language test assessment for the candidate. 
-# The assessment should be written in the language mentioned in the uploaded CV.
-# The candidate shuold be able to provide a message in the chat window to the agent as response to the assessment.
-# Provide assessment evaluation and feedback to the candidate.
+# Language Assessment Agent
+language_assessment_agent = Agent(
+    name="language_assessment_agent",
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
+    description="""
+        Professional language proficiency assessment agent. Creates a simple language test
+        based on the candidate's CV languages, evaluates their response, and provides proficiency feedback.
+        """,
+    instruction="""
+    You are an expert language assessment agent. You have two distinct modes of operation.
+
+    **MODE 1: Language Test Generation**
+    - You will be given information about a candidate's language skills from their CV.
+    - **Your Task:**
+      1. Select ONE language from the CV that the candidate claims proficiency in (preferably not their native language).
+      2. Create a SIMPLE conversational prompt in that language.
+      3. The prompt should be appropriate for the proficiency level claimed (e.g., if they claim B1, use B1-level language).
+    
+    - **Assessment Guidelines:**
+      * **A1-A2 (Basic):** Simple introduction, daily activities
+      * **B1-B2 (Intermediate):** Describe experience, opinions, short scenarios
+      * **C1-C2 (Advanced):** Complex topics, abstract concepts, professional situations
+    
+    - **Good Examples:**
+      * Spanish (B1): "Por favor, describe tu experiencia laboral más reciente y qué responsabilidades tenías."
+        (Please describe your most recent work experience and what responsibilities you had.)
+      
+      * German (C1): "Bitte erläutern Sie, wie Sie mit technischen Herausforderungen in Ihrem letzten Projekt umgegangen sind."
+        (Please explain how you dealt with technical challenges in your last project.)
+      
+      * French (B2): "Pouvez-vous décrire un projet récent sur lequel vous avez travaillé et quel était votre rôle?"
+        (Can you describe a recent project you worked on and what was your role?)
+    
+    - After generating the prompt, clearly state:
+      * Which language you're testing
+      * What proficiency level you're assessing
+      * Ask the candidate to respond in that language
+
+    **MODE 2: Response Evaluation**
+    - When the candidate provides their response, evaluate it based on:
+      1. **Appropriateness:** Did they respond in the correct language?
+      2. **Comprehension:** Did they understand the prompt?
+      3. **Grammar and Vocabulary:** Quality of language use for the claimed level
+      4. **Completeness:** Did they fully address the question?
+    
+    - **Your Evaluation Response:**
+      * Provide a brief assessment (2-3 sentences)
+      * State whether the response demonstrates the claimed proficiency level
+      * Final verdict: `proficiency_confirmed` or `proficiency_needs_improvement`
+    
+    - **Example Evaluation:**
+      "Your response demonstrates good comprehension and appropriate vocabulary for B1 level Spanish. 
+      Grammar is mostly correct with minor errors typical of this level. The response fully addresses 
+      the question about work experience. Verdict: proficiency_confirmed"
+
+    **IMPORTANT RULES:**
+    - Be encouraging and professional in your feedback
+    - Consider that candidates may be nervous
+    - Minor errors are acceptable if overall communication is effective
+    - Only test ONE language per assessment
+    - If they respond in the wrong language, note this in evaluation
+    """,
+    tools=[]  # No tools needed for language assessment
+)
 
 # TODO: AGENT TO SCHEDULE THE CANDIDATE FOR THE LIVE INTERVIEW
 # If the candidate is a good fit, the agent should schedule a live interview for the candidate.
@@ -205,18 +334,25 @@ scheduler_agent = Agent(
     WORKFLOW:
     1. If assignment_result = 'failed', respond: 'The assessment was not passed. No scheduling will occur.'
     2. If assignment_result = 'pass':
-       - Call the tool `calendar_get_busy` to fetch busy times.
-       - Propose free times to the candidate.
-       - Ask the candidate to pick one.
-       - When the candidate confirms a time:
-           Use `calendar_book_slot` to create the event.
-       - After booking, return BOTH:
-           { "status": "booked", "start": "...", "end": "...", "event_id": "..." }
+       - Call the tool `calendar_get_busy` with appropriate start/end times (e.g., next 7 days).
+       - **CRITICAL ERROR HANDLING**: Check the tool's response:
+         * If response starts with "❌ CALENDAR_NOT_CONFIGURED" → Display the configuration error to the user with clear instructions.
+         * If response starts with "❌ CALENDAR_API_ERROR" → Inform the user that Calendar integration is not available and suggest manual scheduling.
+         * If response starts with "✅ Successfully fetched" → Parse busy slots and propose free times.
+       - If calendar is configured correctly:
+         * Propose 3-5 free time slots to the candidate.
+         * Ask the candidate to pick one.
+         * When the candidate confirms a time, use `calendar_book_slot` to create the event.
+         * After booking, confirm the booking details.
+       - If calendar is NOT configured:
+         * Inform the user: "Google Calendar integration is not currently configured. Please contact the interviewer directly to schedule your interview."
 
     RULES:
-    - Do NOT infer busy slots manually; always call the tool.
-    - Continue asking the user until they confirm a specific time.
+    - Do NOT infer busy slots manually; always call the tool first.
+    - If the tool returns an error (starts with ❌), display the error message to the user clearly.
+    - Continue asking the user until they confirm a specific time (only if calendar is configured).
     - Validate ISO datetime formats before booking.
+    - Always check tool responses for success (✅) or error (❌) indicators.
     """,
     tools=[calendar_get_busy, calendar_book_slot]
 )
@@ -234,50 +370,109 @@ WORKFLOW AUTOMATICO:
 
 1. STEP 1: CV Analysis
    - When a user uploads a CV, DELEGATE to 'CV_analysis_agent'.
-   - Extract key technical skills from the analysis automatically.
-   - Summarize candidate profile for confirmation.
+   - **CRITICAL**: The agent will return a detailed analysis. You MUST display the FULL analysis to the user.
+     Show ALL sections: Candidate Information, Technical Skills, Languages, Work Experience, Education, Key Strengths, Overall Assessment.
+   - After showing the full analysis, extract key technical skills from it automatically.
+   - Provide a brief summary of the candidate's profile.
    - Then ask: "Would you like me to find job listings that match your profile?"
 
 2. STEP 2: Job Listings Matching
    - If user agrees, call 'job_listing_agent' passing the extracted skills as `cv_summary`.
-   - The agent should return up to 5 jobs ranked by matching skills.
-   - Present the jobs to the user numerated (1, 2, 3...) and with clear details: title, company, location, description, responsibilities, required skills.
-   - Ask: "Which job interests you most? (Choose by selecting the number)".
-   - Map the user's numeric selection to the corresponding job in the list.
-   - Store the selected job for the next steps.
+   - The agent will return job listings. You MUST format and display them properly.
+   - **CRITICAL**: Display jobs in this EXACT format:
+   
+   1. **Job Title** at Company
+      - Location: [location]
+      - Description: [description]
+      - Responsibilities: [responsibilities]
+      - Required Skills: [skills]
+   
+   2. **Job Title** at Company
+      - Location: [location]
+      - Description: [description]
+      - Responsibilities: [responsibilities]
+      - Required Skills: [skills]
+   
+   - After displaying ALL jobs with numbers, ask: "Which job interests you most? (Choose by selecting the number)".
+   - When user provides a number, map it to the corresponding job and proceed to code assessment.
 
-3. STEP 3: Code Assessment
-   - If the selected job requires coding skills, call 'code_assessment_agent' passing the job details.
-   - The agent should generate a code assessment for the candidate.
-   - The candidate provides their solution in the chat window.
-   - The agent evaluates the submission and returns a pass/fail result.
+3. STEP 3: Code Assessment (TWO-PHASE PROCESS)
+   - **MANDATORY**: ALL software/engineering jobs require a code assessment. Do NOT skip this step.
+   
+   **PHASE 1: Generate Assessment Problem**
+   - After user selects a job number, IMMEDIATELY call 'code_assessment_agent'.
+   - **CRITICAL REQUEST FORMAT**: Your request MUST clearly ask to GENERATE a problem:
+     Example: "Generate a code assessment problem for [Job Title] role. Required skills: [skills list]."
+     DO NOT say: "Evaluate candidate for..." (that's Phase 2!)
+   - The agent will return a complete problem statement with:
+     * Problem description
+     * Test cases
+     * Expected output
+     * Constraints
+   - **CRITICAL**: You MUST display the FULL assessment details to the user.
+     Do NOT summarize or paraphrase. Show the complete problem statement, requirements, examples, and instructions.
+   - Wait for the candidate to provide their solution in the chat window.
+   
+   **PHASE 2: Evaluate Submission**
+   - Once code is submitted, call 'code_assessment_agent' again to evaluate it.
+   - **CRITICAL REQUEST FORMAT**: Pass the user's code EXACTLY as they submitted it.
+     Example request: "[paste exact code here]"
+     DO NOT add extra text like "Evaluate this code:" or "Check correctness:"
+     Just send the raw code!
+   - The agent will:
+     * Execute the code in sandbox
+     * Compare output vs expected
+     * Return either 'pass' or 'not pass'
+   - **Store the assessment result** (pass/not pass) for the scheduling step.
 
-4. STEP 4: Language Assessment
-   - If the selected job requires language skills, call 'language_assessment_agent' passing the job details.
-   - The agent generates a language test tailored to the candidate.
-   - The candidate provides their response in the chat window.
-   - The agent evaluates the submission and returns a pass/fail result.
+4. STEP 4: Language Assessment (MANDATORY for multilingual candidates)
+   - **CRITICAL**: After code assessment passes, you MUST check the CV analysis from STEP 1.
+   - **Language Assessment Trigger:**
+      * If CV shows ANY language OTHER THAN English (with proficiency level like B1, B2, C1, C2, Native, Fluent) → Language assessment is REQUIRED
+      * Examples that TRIGGER assessment: "Spanish: Fluent", "German: C2", "Portuguese: Native", "French: B1"
+      * English-only candidates → Skip language assessment
+   - **PROCESS:**
+      1. Identify the highest proficiency non-English language from CV
+      2. Call 'language_assessment_agent' with: 
+         - Candidate CV information (including language section)
+         - Selected job details
+         - Instruction: "Test proficiency in [language] at [level]"
+      3. Display the language test to the user
+      4. Wait for candidate's response in the tested language
+      5. Call 'language_assessment_agent' again to evaluate the response
+      6. Display evaluation result: `proficiency_confirmed` or `proficiency_needs_improvement`
+   - **Note**: Language assessment result is informational and does NOT block scheduling.
 
 5. STEP 5: Schedule Live Interview
-   - Only proceed if the code assessment is passed.
-   - Call 'scheduler_agent' to:
+   - **CRITICAL**: Only proceed to scheduling if STEP 3 (code assessment) returned 'pass'.
+   - If code assessment result is 'not pass', inform the user and DO NOT call scheduler_agent.
+   - If code assessment result is 'pass' AND language assessment is complete (if applicable), call 'scheduler_agent' with the assessment_result.
+   - The scheduler will:
        - Fetch busy slots using `calendar_get_busy`.
        - Propose free slots to the candidate.
        - Ask the candidate to confirm a preferred time.
        - Book the selected slot using `calendar_book_slot`.
        - Return confirmation with start, end, and event ID.
-   - If any assessment failed, do NOT schedule the interview and inform the candidate.
+   - **NEVER skip to scheduling without a code assessment pass result.**
 
 CRITICAL RULES:
 - ALWAYS delegate to sub-agents using their exact names.
 - NEVER skip steps.
+- **NEVER skip code assessment. ALL jobs require code assessment before scheduling.**
 - Extract and pass skills automatically from CV analysis to job listing agent.
 - Parse numeric input to select the correct job from the numbered list.
+- **ALWAYS display the FULL response from sub-agents to the user. NEVER summarize or paraphrase.**
+- When CV_analysis_agent returns analysis, show the ENTIRE analysis with all sections.
+- When job_listing_agent returns jobs, format them with clear numbers (1, 2, 3...) and ALL details.
+- When code_assessment_agent returns an assignment, show the ENTIRE problem statement to the user.
+- **DO NOT SKIP showing information. Users CANNOT see what sub-agents return unless you display it.**
+- **WORKFLOW ORDER: CV Analysis → Job Selection → Code Assessment → (if pass) Scheduling**
 """,
     tools=[
         AgentTool(CV_analysis_agent),
         AgentTool(job_listing_agent),
         AgentTool(code_assessment_agent),
+        AgentTool(language_assessment_agent),
         AgentTool(scheduler_agent),
     ],
 )

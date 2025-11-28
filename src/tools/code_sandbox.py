@@ -5,6 +5,20 @@ import contextlib
 import time
 import traceback
 import re
+import platform
+
+# Set the multiprocessing start method for better compatibility
+# This prevents issues with Streamlit and macOS/Linux
+# Windows only supports 'spawn', Unix systems can use 'fork'
+if __name__ != '__main__':
+    try:
+        if platform.system() in ('Darwin', 'Linux'):
+            # macOS and Linux: use 'fork' for better performance and Streamlit compatibility
+            multiprocessing.set_start_method('fork', force=True)
+        # Windows will use its default 'spawn' method
+    except RuntimeError:
+        # Already set, ignore
+        pass
 
 # --- Resource limiting (Unix-based systems only) ---
 try:
@@ -26,9 +40,14 @@ def _unsafe_execute(code, return_dict, memory_limit_mb):
     
     # --- Set Resource Limits (if on Unix) ---
     if IS_UNIX:
-        # Set memory limit (in bytes)
-        memory_bytes = memory_limit_mb * 1024 * 1024
-        resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
+        try:
+            # Set memory limit (in bytes)
+            memory_bytes = memory_limit_mb * 1024 * 1024
+            resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
+        except (ValueError, OSError) as e:
+            # On macOS, setrlimit may fail with "current limit exceeds maximum limit"
+            # This is a known issue on macOS - we'll rely on the timeout mechanism instead
+            pass
         
         # CPU time limit is an additional safeguard against complex computations
         # that aren't simple infinite loops. The p.join() timeout is still the primary guard.
@@ -58,7 +77,7 @@ def _unsafe_execute(code, return_dict, memory_limit_mb):
         return_dict["output"] = output_capture.getvalue()
         return_dict["status"] = "memory_error"
         return_dict["error_msg"] = f"Memory usage exceeded the limit of {memory_limit_mb}MB."
-    except Exception:
+    except Exception as e:
         return_dict["output"] = output_capture.getvalue()
         return_dict["status"] = "error"
         return_dict["error_msg"] = traceback.format_exc()

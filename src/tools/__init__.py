@@ -29,7 +29,7 @@ __all__ = [
     'job_listing_tool',
     'calendar_get_busy',
     'calendar_book_slot',
-    'code_execution_tool'
+    'code_execution_tool',
     # Helper functions
     'read_cv_file',
     'load_all_cvs',
