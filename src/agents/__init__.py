@@ -12,7 +12,8 @@ from .agents import (
     LlmAgent,
     google_search,
     types,
-    code_assessment_agent
+    code_evaluator_agent,
+    get_coding_problem
 )
 
 __all__ = [
@@ -24,5 +25,6 @@ __all__ = [
     'LlmAgent',
     'google_search',
     'types',
-    'code_assessment_agent'
+    'code_evaluator_agent',
+    'get_coding_problem'
 ]

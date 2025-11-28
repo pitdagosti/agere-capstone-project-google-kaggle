@@ -178,7 +178,7 @@ def run_code_assignment(code: str, expected_output: str = None, context: Any = N
             context.set("problem_generated", True)
         # Return normal execution result
         if result["status"] == "success":
-            feedback = f"✅ Code executed successfully!\nOutput:\n{result['output']}"
+            feedback = f"✅ Expected output stored successfully!"
         elif result["status"] == "timeout":
             feedback = f"❌ Timeout Error: {result.get('error_msg', 'Execution timed out.')}"
         elif result["status"] == "security_violation":
@@ -221,6 +221,45 @@ def run_code_assignment(code: str, expected_output: str = None, context: Any = N
         feedback = f"❌ Execution Error:\n{result.get('error_msg', 'An unknown error occurred.')}"
     
     return feedback
+
+
+def present_coding_problem_fn(job_title: str = "default") -> str:
+    """
+    Present a coding problem from templates based on job category.
+    Automatically stores expected output for later evaluation.
+    
+    Args:
+        job_title: The job title to determine appropriate problem
+        
+    Returns:
+        Formatted problem statement with test cases and instructions
+    """
+    # Import here to avoid circular dependency
+    from ..agents.agents import get_coding_problem
+    
+    # Get the appropriate problem
+    problem = get_coding_problem(job_title)
+    
+    # Format the problem for display
+    formatted_problem = f"""**Coding Assessment: {problem['title']}**
+
+**Problem Description:**
+{problem['description']}
+
+**Test Cases:**
+```python
+{problem['test_code']}
+```
+
+**Instructions:**
+- Write your solution function
+- Include the test cases at the end of your code
+- DO NOT use import statements
+- Only use built-in functions: print, range, len, sum, min, max, abs, round, int, str, list, dict, tuple, set, float, bool, sorted, enumerate, zip, reversed
+
+**Please submit your complete code (function + test cases).**"""
+
+    return formatted_problem
 
 
 def read_cv_fn(filename: str) -> str:
@@ -446,5 +485,6 @@ list_available_cvs = FunctionTool(func=list_available_cvs_fn)
 compare_candidates = FunctionTool(func=compare_candidates_fn)
 job_listing_tool = FunctionTool(func=list_jobs_from_db)
 code_execution_tool = FunctionTool(func=run_code_assignment)
+problem_presenter_tool = FunctionTool(func=present_coding_problem_fn)
 calendar_get_busy = FunctionTool(func=calendar_get_busy_fn)
 calendar_book_slot = FunctionTool(func=calendar_book_slot_fn)

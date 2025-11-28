@@ -13,6 +13,7 @@ from .tools import (
     calendar_get_busy_fn as calendar_get_busy,
     calendar_book_slot_fn as calendar_book_slot,
     code_execution_tool,
+    problem_presenter_tool,
 )
 
 # Helper functions - Use these for utility purposes
