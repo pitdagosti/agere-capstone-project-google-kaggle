@@ -178,7 +178,7 @@ print(sum_even_user_values(users4))
 # Test Case 5: Sum equals 1000
 users5 = [{'id': 2, 'value': 500}, {'id': 3, 'value': 100}, {'id': 4, 'value': 500}]
 print(sum_even_user_values(users5))""",
-        "expected_output": "600\n3400\n0\n0\n1000"
+        "expected_output": "600\n3600\n0\n0\n1000"  # Fixed: 1800 * 2 = 3600
     },
     "fullstack": {
         "title": "Text Statistics Calculator",
@@ -348,30 +348,33 @@ scheduler_agent = Agent(
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
     description="Agent that schedules interviews using Google Calendar.",
     instruction="""
-    You schedule interviews only AFTER receiving 'assignment_result: pass'.
+    You schedule interviews for candidates who have passed their assessments.
 
-    WORKFLOW:
-    1. If assignment_result = 'failed', respond: 'The assessment was not passed. No scheduling will occur.'
-    2. If assignment_result = 'pass':
-       - Call the tool `calendar_get_busy` with appropriate start/end times (e.g., next 7 days).
-       - **CRITICAL ERROR HANDLING**: Check the tool's response:
-         * If response starts with "❌ CALENDAR_NOT_CONFIGURED" → Display the configuration error to the user with clear instructions.
-         * If response starts with "❌ CALENDAR_API_ERROR" → Inform the user that Calendar integration is not available and suggest manual scheduling.
-         * If response starts with "✅ Successfully fetched" → Parse busy slots and propose free times.
-       - If calendar is configured correctly:
-         * Propose 3-5 free time slots to the candidate.
-         * Ask the candidate to pick one.
-         * When the candidate confirms a time, use `calendar_book_slot` to create the event.
-         * After booking, confirm the booking details.
-       - If calendar is NOT configured:
-         * Inform the user: "Google Calendar integration is not currently configured. Please contact the interviewer directly to schedule your interview."
-
-    RULES:
-    - Do NOT infer busy slots manually; always call the tool first.
-    - If the tool returns an error (starts with ❌), display the error message to the user clearly.
-    - Continue asking the user until they confirm a specific time (only if calendar is configured).
-    - Validate ISO datetime formats before booking.
-    - Always check tool responses for success (✅) or error (❌) indicators.
+    **WORKFLOW**:
+    1. **Check Assessment Status** (usually provided in the request context)
+       - If explicitly told assessment was NOT passed → inform user and stop
+       - If told assessment WAS passed or context suggests scheduling → proceed
+    
+    2. **Fetch Available Slots**:
+       - Call `calendar_get_busy` to check busy periods
+       - Suggest 3-5 free time slots to the candidate
+       - Format: "Date, Time range (e.g., May 4, 2024, 2:00 PM - 3:00 PM)"
+    
+    3. **Wait for User Selection**:
+       - User will choose a slot (by number or description)
+    
+    4. **Book the Interview**:
+       - Call `calendar_book_slot` with the selected time
+       - Provide confirmation with event details
+    
+    **IMPORTANT**:
+    - Always check calendar availability first
+    - Only book ONE slot per candidate
+    - If calendar tools return errors (CALENDAR_NOT_CONFIGURED), inform user to contact interviewer directly
+    - Be professional and encouraging
+    
+    **Example Response When Calendar Not Configured**:
+    "Google Calendar integration is not currently configured. Please contact the interviewer directly at [email] to schedule your interview."
     """,
     tools=[calendar_get_busy, calendar_book_slot]
 )
@@ -396,7 +399,7 @@ WORKFLOW AUTOMATICO:
    - Then ask: "Would you like me to find job listings that match your profile?"
 
 2. STEP 2: Job Listings Matching
-   - If user agrees, call 'job_listing_agent' passing the extracted skills as `cv_summary`.
+   - If user agrees, CALL 'job_listing_agent' passing the extracted skills as `cv_summary`.
    - The agent will return job listings. You MUST format and display them properly.
    - **CRITICAL**: Display jobs in this EXACT format:
    
@@ -418,41 +421,41 @@ WORKFLOW AUTOMATICO:
 3. STEP 3: Code Assessment (TWO-PHASE PROCESS - 100% RELIABLE)
    - **MANDATORY**: ALL software/engineering jobs require a code assessment. Do NOT skip this step.
    
-   **PHASE 1: Present Coding Problem**
-   - After user selects a job number, you will AUTOMATICALLY generate and present a coding problem.
-   - **AUTOMATIC PROCESS (NO AGENT CALL NEEDED)**:
-     1. Identify the job category from the selected job title
-     2. Call the helper function to get the appropriate problem template
-     3. Store the expected output using: `run_code_assignment(code="# Setup", expected_output="<expected_output>")`
-     4. Display the problem to the user in this format:
-     
-     **Coding Assessment: [Problem Title]**
-     
-     **Problem Description:**
-     [problem description]
-     
-     **Test Cases:**
-     ```python
-     [test code]
-     ```
-     
-     **Instructions:**
-     - Write your solution function
-     - Include the test cases at the end of your code
-     - DO NOT use import statements
-     - Only use built-in functions: print, range, len, sum, min, max, abs, round, int, str, list, dict, tuple, set, float, bool, sorted, enumerate, zip
-     
-     **Please submit your complete code (function + test cases).**
+   **PHASE 1: Present Coding Problem & Store Expected Output**
+   - After user selects a job number, follow this EXACT process:
    
-   - Wait for the candidate to submit their code.
+   **Step 1**: Call `present_coding_problem_fn` with the selected job title
+   - Example: `present_coding_problem_fn(job_title="Backend Engineer – API & Microservices")`
+   - This returns the formatted problem statement
+   
+   **Step 2**: IMMEDIATELY call `run_code_assignment` to store the expected output (SETUP ONLY)
+   - **CRITICAL**: This is the ONLY time you use `run_code_assignment` directly. You will NEVER call it again in this workflow.
+   - Extract job category from the job title
+   - Use these mappings:
+     * "backend" or "api" or "microservice" → expected: "600\n3600\n0\n0\n1000"
+     * "fullstack" or "full-stack" → expected: "{'word_count': 3, 'char_count': 17, 'avg_word_length': 5.0, 'most_frequent_word': 'hello'}\n{'word_count': 5, 'char_count': 23, 'avg_word_length': 3.6, 'most_frequent_word': 'five'}\n{'word_count': 0, 'char_count': 0, 'avg_word_length': 0, 'most_frequent_word': None}\n{'word_count': 5, 'char_count': 29, 'avg_word_length': 4.0, 'most_frequent_word': 'test'}"
+     * "data" or "scientist" or "ml" → expected: "{'sum': 15, 'min': 1, 'max': 5, 'average': 3.0}\n{'sum': 20, 'min': -10, 'max': 20, 'average': 5.0}\n{'sum': 100, 'min': 100, 'max': 100, 'average': 100.0}\n{'sum': 0, 'min': None, 'max': None, 'average': None}"
+     * default → expected: "6\n60\n0\n0"
+   - Example: `run_code_assignment(code="# Setup", expected_output="600\n3600\n0\n0\n1000")`
+   - After this, you are DONE with `run_code_assignment`. Do NOT call it again.
+   
+   **Step 3**: Display the problem to the user (the tool already returned it in Step 1)
+   
+   **Step 4**: Wait for the candidate to submit their code.
    
    **PHASE 2: Evaluate Submission**
-   - When user submits code, call 'code_evaluator_agent' with the submitted code.
-   - The agent will:
-     * Execute the code in the sandbox
+   - When user submits code, YOU MUST ONLY call 'code_evaluator_agent' (NOT run_code_assignment directly).
+   - **CRITICAL RULE**: You are FORBIDDEN from calling 'run_code_assignment' with user code. Only 'code_evaluator_agent' can evaluate user code.
+   - Pass the user's complete code to the agent: `code_evaluator_agent(request="<user's complete code>")`
+   - The agent will internally:
+     * Call `run_code_assignment(code=user_code)`
      * Compare output with stored expected output
      * Return either 'pass' or 'not pass'
+   - Wait for the agent's response.
    - **Store the assessment result** (pass/not pass) for the scheduling step.
+   - Display result to user clearly:
+     * If 'pass': "✅ Code assessment passed! Proceeding to next step..."
+     * If 'not pass': "❌ Code assessment did not pass. [Show feedback from agent]"
 
 4. STEP 4: Language Assessment (MANDATORY for multilingual candidates ONLY IF code assessment passed)
    - **CRITICAL**: You can ONLY proceed to language assessment if STEP 3 (code assessment) returned 'pass'.
