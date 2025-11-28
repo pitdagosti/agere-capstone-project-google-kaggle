@@ -8,11 +8,19 @@ from google.adk.models.google_llm import Gemini
 from src.tools.code_sandbox import execute_code
 from google.adk.runners import InMemoryRunner
 from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv()
 
 
-
-# Import custom tools
-from src.tools import read_cv, list_available_cvs, compare_candidates, job_listing_tool, code_execution_tool # MODIFICATO: Usiamo l'oggetto FunctionTool 'job_listing_tool'
+from src.tools import (
+    read_cv, 
+    list_available_cvs, 
+    compare_candidates, 
+    job_listing_tool,
+    calendar_get_busy,
+    calendar_book_slot,
+    code_execution_tool,
+)
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -187,59 +195,90 @@ code_assessment_agent = Agent(
 # If the candidate is a good fit, the agent should schedule a live interview for the candidate.
 # PitDagosti's tool leveraging google calendar API should be used to schedule the interview.
 
+scheduler_agent = Agent(
+    name="scheduler_agent",
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
+    description="Agent that schedules interviews using Google Calendar.",
+    instruction="""
+    You schedule interviews only AFTER receiving 'assignment_result: pass'.
 
-# TODO: ORCHESTRATOR AGENT
-# --- ORCHESTRATOR AGENT AGGIORNATO ---
+    WORKFLOW:
+    1. If assignment_result = 'failed', respond: 'The assessment was not passed. No scheduling will occur.'
+    2. If assignment_result = 'pass':
+       - Call the tool `calendar_get_busy` to fetch busy times.
+       - Propose free times to the candidate.
+       - Ask the candidate to pick one.
+       - When the candidate confirms a time:
+           Use `calendar_book_slot` to create the event.
+       - After booking, return BOTH:
+           { "status": "booked", "start": "...", "end": "...", "event_id": "..." }
+
+    RULES:
+    - Do NOT infer busy slots manually; always call the tool.
+    - Continue asking the user until they confirm a specific time.
+    - Validate ISO datetime formats before booking.
+    """,
+    tools=[calendar_get_busy, calendar_book_slot]
+)
+
+# --- ORCHESTRATOR AGENT ---
+
 orchestrator = LlmAgent(
     name="manager",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
     instruction="""
-    You are a job applicant assistant orchestrator. Coordinate a team of specialized agents to help 
-    candidates find their ideal job match. You MUST delegate tasks to your sub-agents.
-    
-    WORKFLOW AUTOMATICO:
-    
-    1. STEP 1: CV Analysis
-       - When a user uploads a CV, DELEGATE to 'CV_analysis_agent'.
-       - Extract key technical skills from the analysis automatically.
-       - Summarize candidate profile for confirmation.
-       - Then ask: "Would you like me to find job listings that match your profile?"
-    
-    2. STEP 2: Job Listings Matching
-       - If user agrees, call 'job_listing_agent' passing the extracted skills as `cv_summary`.
-       - The agent should return up to 5 jobs ranked by matching skills.
-       - Present the jobs to the user numerated (1, 2, 3...) and with clear details: title, company, location, description, responsibilities, required skills.
-       - Ask: "Which job interests you most? (Choose by selecting the number)".
-       - Map the user's numeric selection to the corresponding job in the list.
-       - Store the selected job for the next steps (e.g., code assessment).
+You are a job applicant assistant orchestrator. Coordinate a team of specialized agents to help 
+candidates find their ideal job match. You MUST delegate tasks to your sub-agents.
 
-    3. STEP 3: Code Assessment
-        - 1) Generation: If the user selects a job that requires coding skills, your first action is to DELEGATE to `code_assessment_agent` to generate the assignment.
-        - 2) - Evaluation: After an assignment has been given, if the user's next message contains a block of code, you **MUST** assume it is a solution. Your only job is to DELEGATE the user's entire message to the `code_assessment_agent` for evaluation.
-        - 3) - Handling the Result: The `code_assessment_agent` will reply with a single word: `pass` or `not pass`.
-            - If the response is `pass`: Congratulate the user for passing and ask if they are ready to proceed to the next step.
-            - If the response is `not pass`: Inform the user that their submission did not pass. Politely ask them to review the assignment and submit a new solution. (Do not give technical feedback yourself).
+WORKFLOW AUTOMATICO:
 
-    4. STEP 4: Language Assessment
-       - If user selects a job AND the job requires language skills: call 'language_assessment_agent' passing the job details.
-       - The agent should generate a language assessment for the candidate.
-       - The assessment should be written in the language mentioned in the uploaded CV.
-       - The candidate should be able to provide a message in the chat window to the agent as response to the assessment.
-       - Provide assessment evaluation and feedback to the candidate.
-       - Ask: "Would you like me to schedule a live interview for you?"
-       - If user agrees, call 'scheduler_agent' to schedule the interview.
-       - The agent should schedule the interview for the candidate.
-    
-    CRITICAL RULES:
-    - ALWAYS delegate to sub-agents using their exact names.
-    - NEVER skip steps.
-    - Extract and pass skills automatically from CV analysis to job listing agent.
-    - Parse numeric input to select the correct job from the numbered list.
-    """,
+1. STEP 1: CV Analysis
+   - When a user uploads a CV, DELEGATE to 'CV_analysis_agent'.
+   - Extract key technical skills from the analysis automatically.
+   - Summarize candidate profile for confirmation.
+   - Then ask: "Would you like me to find job listings that match your profile?"
+
+2. STEP 2: Job Listings Matching
+   - If user agrees, call 'job_listing_agent' passing the extracted skills as `cv_summary`.
+   - The agent should return up to 5 jobs ranked by matching skills.
+   - Present the jobs to the user numerated (1, 2, 3...) and with clear details: title, company, location, description, responsibilities, required skills.
+   - Ask: "Which job interests you most? (Choose by selecting the number)".
+   - Map the user's numeric selection to the corresponding job in the list.
+   - Store the selected job for the next steps.
+
+3. STEP 3: Code Assessment
+   - If the selected job requires coding skills, call 'code_assessment_agent' passing the job details.
+   - The agent should generate a code assessment for the candidate.
+   - The candidate provides their solution in the chat window.
+   - The agent evaluates the submission and returns a pass/fail result.
+
+4. STEP 4: Language Assessment
+   - If the selected job requires language skills, call 'language_assessment_agent' passing the job details.
+   - The agent generates a language test tailored to the candidate.
+   - The candidate provides their response in the chat window.
+   - The agent evaluates the submission and returns a pass/fail result.
+
+5. STEP 5: Schedule Live Interview
+   - Only proceed if the code assessment is passed.
+   - Call 'scheduler_agent' to:
+       - Fetch busy slots using `calendar_get_busy`.
+       - Propose free slots to the candidate.
+       - Ask the candidate to confirm a preferred time.
+       - Book the selected slot using `calendar_book_slot`.
+       - Return confirmation with start, end, and event ID.
+   - If any assessment failed, do NOT schedule the interview and inform the candidate.
+
+CRITICAL RULES:
+- ALWAYS delegate to sub-agents using their exact names.
+- NEVER skip steps.
+- Extract and pass skills automatically from CV analysis to job listing agent.
+- Parse numeric input to select the correct job from the numbered list.
+""",
     tools=[
-        AgentTool(CV_analysis_agent), 
+        AgentTool(CV_analysis_agent),
         AgentTool(job_listing_agent),
-        AgentTool(code_assessment_agent)
+        AgentTool(code_assessment_agent),
+        AgentTool(scheduler_agent),
     ],
 )
 

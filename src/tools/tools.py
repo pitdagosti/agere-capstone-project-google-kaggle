@@ -6,12 +6,110 @@ from google.genai import types
 from google.adk.tools import FunctionTool
 import sqlite3
 import json
-import os
 from .code_sandbox import execute_code
+from datetime import datetime, timedelta
+from dateutil import parser
+import requests
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from dotenv import load_dotenv
+load_dotenv()
+import os
+
 
 # =============================================================================
 # CUSTOM ADK FUNCTIONS
 # =============================================================================
+
+# --- CALENDAR TOOLS ---
+
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+import os
+
+CALENDAR_ID = os.getenv("CALENDAR_ID", "primary")  # puoi mettere il tuo calendario Gmail qui
+
+def get_calendar_service():
+    """
+    Restituisce un servizio Google Calendar autenticato usando le credenziali OAuth dal .env.
+    """
+    creds = Credentials(
+        None,
+        refresh_token=os.getenv("GOOGLE_REFRESH_TOKEN"),
+        client_id=os.getenv("GOOGLE_CLIENT_ID"),
+        client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+        token_uri="https://oauth2.googleapis.com/token",
+    )
+    service = build('calendar', 'v3', credentials=creds)
+    return service
+
+
+def calendar_get_busy_fn(start: str, end: str) -> str:
+    """
+    Query busy slots direttamente da Google Calendar.
+
+    Args:
+        start: ISO format datetime string
+        end: ISO format datetime string
+
+    Returns:
+        Busy slots in JSON format as string
+    """
+    try:
+        service = get_calendar_service()
+        events_result = service.events().list(
+            calendarId=CALENDAR_ID,
+            timeMin=start,
+            timeMax=end,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+
+        busy_slots = []
+        for event in events_result.get('items', []):
+            busy_slots.append({
+                "start": event['start'].get('dateTime', event['start'].get('date')),
+                "end": event['end'].get('dateTime', event['end'].get('date')),
+                "summary": event.get('summary', '')
+            })
+
+        return f"Busy slots between {start} and {end}:\n{busy_slots}"
+
+    except Exception as e:
+        return f"Exception while fetching busy slots: {str(e)}"
+
+
+def calendar_book_slot_fn(start: str, end: str, summary: str = "Interview", attendee_email: str = None) -> str:
+    """
+    Prenota un evento direttamente su Google Calendar.
+
+    Args:
+        start: ISO format start datetime string
+        end: ISO format end datetime string
+        summary: Event summary/title
+        attendee_email: Optional candidate email
+
+    Returns:
+        Result of booking (success/failure)
+    """
+    try:
+        service = get_calendar_service()
+        event = {
+            "summary": summary,
+            "start": {"dateTime": start, "timeZone": "Europe/Rome"},
+            "end": {"dateTime": end, "timeZone": "Europe/Rome"},
+        }
+        if attendee_email:
+            event["attendees"] = [{"email": attendee_email}]
+
+        created_event = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
+        return f"✅ Booking successful: Event ID {created_event['id']}, starts at {created_event['start']['dateTime']}"
+
+    except Exception as e:
+        return f"Exception while booking slot: {str(e)}"
+
+
+
 
 def run_code_assignment(code: str) -> str:
     """
@@ -266,3 +364,5 @@ list_available_cvs = FunctionTool(func=list_available_cvs_fn)
 compare_candidates = FunctionTool(func=compare_candidates_fn)
 job_listing_tool = FunctionTool(func=list_jobs_from_db)
 code_execution_tool = FunctionTool(func=run_code_assignment)
+calendar_get_busy = FunctionTool(func=calendar_get_busy_fn)
+calendar_book_slot = FunctionTool(func=calendar_book_slot_fn)
