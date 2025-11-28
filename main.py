@@ -352,7 +352,7 @@ def main():
     st.markdown("""
         <div class="main-header">
             <h1>PROJECT AGERE</h1>
-            <h3>Agentic Recruiter - AI-Powered CV Analysis</h3>
+            <h3>Agentic Self Assessment Tool- AI-Powered CV Analysis</h3>
         </div>
     """, unsafe_allow_html=True)
     
