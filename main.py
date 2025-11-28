@@ -269,12 +269,20 @@ def show_analysis_dialog(uploaded_file):
             if not message or "role" not in message or "content" not in message:
                 continue
             if message["role"] == "user":
-                st.markdown(
-                    f"""<div class="user-message-container">
-<div class="user-message-bubble">{html.escape(message["content"])}</div>
+                # Check if message contains code (multiline or starts with def/import)
+                content = message["content"]
+                if "\n" in content or content.strip().startswith(("def ", "import ", "from ", "class ")):
+                    # Render as markdown code block for proper formatting
+                    with st.chat_message("user"):
+                        st.code(content, language="python")
+                else:
+                    # Regular text message with HTML escape
+                    st.markdown(
+                        f"""<div class="user-message-container">
+<div class="user-message-bubble">{html.escape(content)}</div>
 </div>""",
-                    unsafe_allow_html=True
-                )
+                        unsafe_allow_html=True
+                    )
             else:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
@@ -284,14 +292,32 @@ def show_analysis_dialog(uploaded_file):
         prompt = st.chat_input("Ask questions about this CV or request additional analysis...")
 
     if prompt:
+        # Log user input
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "timestamp": datetime.now().timestamp(),
+                "agent_name": "User",
+                "tool_name": None,
+                "input_text": prompt,
+                "output_text": None,
+                "type": "user_input"
+            }, ensure_ascii=False) + "\n")
+        
         st.session_state.messages.append({"role": "user", "content": prompt})
         with chat_container:
-            st.markdown(
-                f"""<div class="user-message-container">
+            # Check if message contains code (multiline or starts with def/import)
+            if "\n" in prompt or prompt.strip().startswith(("def ", "import ", "from ", "class ")):
+                # Render as markdown code block for proper formatting
+                with st.chat_message("user"):
+                    st.code(prompt, language="python")
+            else:
+                # Regular text message with HTML escape
+                st.markdown(
+                    f"""<div class="user-message-container">
 <div class="user-message-bubble">{html.escape(prompt)}</div>
 </div>""",
-                unsafe_allow_html=True
-            )
+                    unsafe_allow_html=True
+                )
 
         with chat_container:
             with st.chat_message("assistant"):

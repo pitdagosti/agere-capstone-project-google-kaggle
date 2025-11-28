@@ -1,7 +1,7 @@
 # CUSTOM TOOLS FOR AGENTS 🔧
 
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, Union, Optional, Any
 from google.genai import types
 from google.adk.tools import FunctionTool
 import sqlite3
@@ -15,6 +15,21 @@ from googleapiclient.discovery import build
 from dotenv import load_dotenv
 load_dotenv()
 import os
+
+# Try to import Context - if not available, we'll work without it
+try:
+    from google.adk.tools import ToolContext
+    CONTEXT_AVAILABLE = True
+except ImportError:
+    CONTEXT_AVAILABLE = False
+    # Create a mock ToolContext for backwards compatibility
+    class ToolContext:
+        def __init__(self):
+            self._data = {}
+        def set(self, key, value):
+            self._data[key] = value
+        def get(self, key, default=None):
+            return self._data.get(key, default)
 
 
 # =============================================================================
@@ -33,11 +48,22 @@ def get_calendar_service():
     """
     Restituisce un servizio Google Calendar autenticato usando le credenziali OAuth dal .env.
     """
+    # Check if credentials are configured
+    refresh_token = os.getenv("GOOGLE_REFRESH_TOKEN")
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+    
+    if not all([refresh_token, client_id, client_secret]):
+        raise ValueError(
+            "Google Calendar credentials not configured. "
+            "Please set GOOGLE_REFRESH_TOKEN, GOOGLE_CLIENT_ID, and GOOGLE_CLIENT_SECRET in .env file."
+        )
+    
     creds = Credentials(
         None,
-        refresh_token=os.getenv("GOOGLE_REFRESH_TOKEN"),
-        client_id=os.getenv("GOOGLE_CLIENT_ID"),
-        client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+        refresh_token=refresh_token,
+        client_id=client_id,
+        client_secret=client_secret,
         token_uri="https://oauth2.googleapis.com/token",
     )
     service = build('calendar', 'v3', credentials=creds)
@@ -73,10 +99,14 @@ def calendar_get_busy_fn(start: str, end: str) -> str:
                 "summary": event.get('summary', '')
             })
 
-        return f"Busy slots between {start} and {end}:\n{busy_slots}"
+        return f"✅ Successfully fetched calendar availability.\n\nBusy slots between {start} and {end}:\n{json.dumps(busy_slots, indent=2)}"
 
+    except ValueError as ve:
+        # Configuration error
+        return f"❌ CALENDAR_NOT_CONFIGURED: {str(ve)}\n\nTo enable Google Calendar integration, please configure the following in your .env file:\n- GOOGLE_REFRESH_TOKEN\n- GOOGLE_CLIENT_ID\n- GOOGLE_CLIENT_SECRET\n- CALENDAR_ID"
     except Exception as e:
-        return f"Exception while fetching busy slots: {str(e)}"
+        # Other errors (API errors, network issues, etc.)
+        return f"❌ CALENDAR_API_ERROR: Failed to fetch busy slots - {type(e).__name__}: {str(e)}\n\nThis is likely due to expired credentials or Calendar API not being enabled."
 
 
 def calendar_book_slot_fn(start: str, end: str, summary: str = "Interview", attendee_email: str = None) -> str:
@@ -103,41 +133,93 @@ def calendar_book_slot_fn(start: str, end: str, summary: str = "Interview", atte
             event["attendees"] = [{"email": attendee_email}]
 
         created_event = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        return f"✅ Booking successful: Event ID {created_event['id']}, starts at {created_event['start']['dateTime']}"
+        return f"✅ Booking successful!\n\nEvent Details:\n- Event ID: {created_event['id']}\n- Summary: {summary}\n- Start: {created_event['start']['dateTime']}\n- End: {created_event['end']['dateTime']}"
 
+    except ValueError as ve:
+        # Configuration error
+        return f"❌ CALENDAR_NOT_CONFIGURED: {str(ve)}\n\nTo enable Google Calendar integration, please configure the following in your .env file:\n- GOOGLE_REFRESH_TOKEN\n- GOOGLE_CLIENT_ID\n- GOOGLE_CLIENT_SECRET\n- CALENDAR_ID"
     except Exception as e:
-        return f"Exception while booking slot: {str(e)}"
+        # Other errors (API errors, network issues, etc.)
+        return f"❌ CALENDAR_BOOKING_ERROR: Failed to book slot - {type(e).__name__}: {str(e)}\n\nThis is likely due to expired credentials, Calendar API not being enabled, or invalid datetime format."
 
 
 
 
-def run_code_assignment(code: str) -> str:
+def run_code_assignment(code: str, expected_output: str = None, context: Any = None) -> str:
     """
     Executes the candidate's code submission in a secure sandbox environment.
     This tool is used by the code_assessment_agent to evaluate solutions.
     It returns a structured string indicating success or failure.
+    
+    NEW: Supports Context for reliable output comparison!
 
     Args:
         code: The Python code string submitted by the candidate.
+        expected_output: (Optional) If provided, stores this as the expected output in context.
+                        If not provided, retrieves expected output from context and compares.
+        context: (Optional) ToolContext for storing/retrieving expected outputs.
 
     Returns:
         A string with the execution result, prefixed with '✅' for success
         or '❌' for errors, timeouts, or security violations.
+        
+        If context is available and expected_output was stored:
+        - Compares actual output with expected output
+        - Returns detailed pass/fail message
     """
-
-    # Call the actual sandbox execution function you created
+    
+    # Execute code in sandbox
     result = execute_code(code)
-
-    # Format the dictionary output into a clean string for the agent
+    
+    # MODE 1: Store expected output (problem generation)
+    if expected_output is not None:
+        if context:
+            context.set("last_expected_output", expected_output)
+            context.set("problem_generated", True)
+        # Return normal execution result
+        if result["status"] == "success":
+            feedback = f"✅ Code executed successfully!\nOutput:\n{result['output']}"
+        elif result["status"] == "timeout":
+            feedback = f"❌ Timeout Error: {result.get('error_msg', 'Execution timed out.')}"
+        elif result["status"] == "security_violation":
+             feedback = f"❌ Security Error: {result.get('error_msg', 'A security violation was detected.')}"
+        else:
+            feedback = f"❌ Execution Error:\n{result.get('error_msg', 'An unknown error occurred.')}"
+        return feedback
+    
+    # MODE 2: Compare with stored expected output (evaluation)
+    if context and context.get("problem_generated"):
+        expected = context.get("last_expected_output", "")
+        
+        # First check if execution succeeded
+        if result["status"] != "success":
+            if result["status"] == "timeout":
+                return f"❌ FAIL: Timeout Error - {result.get('error_msg', 'Execution timed out.')}"
+            elif result["status"] == "security_violation":
+                return f"❌ FAIL: Security Error - {result.get('error_msg', 'A security violation was detected.')}"
+            else:
+                return f"❌ FAIL: Execution Error - {result.get('error_msg', 'An unknown error occurred.')}"
+        
+        # Execution succeeded - compare outputs
+        actual = result['output'].strip()
+        expected = expected.strip()
+        
+        if actual == expected:
+            return f"✅ PASS: Code executed successfully and output matches expected!\nOutput:\n{actual}"
+        else:
+            return f"❌ FAIL: Output mismatch\nExpected:\n{expected}\n\nActual:\n{actual}"
+    
+    # MODE 3: Backwards compatible - no context or expected output
+    # This is the old behavior for existing code
     if result["status"] == "success":
         feedback = f"✅ Code executed successfully!\nOutput:\n{result['output']}"
     elif result["status"] == "timeout":
         feedback = f"❌ Timeout Error: {result.get('error_msg', 'Execution timed out.')}"
     elif result["status"] == "security_violation":
          feedback = f"❌ Security Error: {result.get('error_msg', 'A security violation was detected.')}"
-    else: # Covers 'error', 'memory_error', etc.
+    else:
         feedback = f"❌ Execution Error:\n{result.get('error_msg', 'An unknown error occurred.')}"
-
+    
     return feedback
 
 
