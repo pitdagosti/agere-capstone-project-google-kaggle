@@ -7,11 +7,41 @@ from google.adk.tools import FunctionTool
 import sqlite3
 import json
 import os
-
+from .code_sandbox import execute_code
 
 # =============================================================================
 # CUSTOM ADK FUNCTIONS
 # =============================================================================
+
+def run_code_assignment(code: str) -> str:
+    """
+    Executes the candidate's code submission in a secure sandbox environment.
+    This tool is used by the code_assessment_agent to evaluate solutions.
+    It returns a structured string indicating success or failure.
+
+    Args:
+        code: The Python code string submitted by the candidate.
+
+    Returns:
+        A string with the execution result, prefixed with '✅' for success
+        or '❌' for errors, timeouts, or security violations.
+    """
+
+    # Call the actual sandbox execution function you created
+    result = execute_code(code)
+
+    # Format the dictionary output into a clean string for the agent
+    if result["status"] == "success":
+        feedback = f"✅ Code executed successfully!\nOutput:\n{result['output']}"
+    elif result["status"] == "timeout":
+        feedback = f"❌ Timeout Error: {result.get('error_msg', 'Execution timed out.')}"
+    elif result["status"] == "security_violation":
+         feedback = f"❌ Security Error: {result.get('error_msg', 'A security violation was detected.')}"
+    else: # Covers 'error', 'memory_error', etc.
+        feedback = f"❌ Execution Error:\n{result.get('error_msg', 'An unknown error occurred.')}"
+
+    return feedback
+
 
 def read_cv_fn(filename: str) -> str:
     """
@@ -235,3 +265,4 @@ read_cv = FunctionTool(func=read_cv_fn)
 list_available_cvs = FunctionTool(func=list_available_cvs_fn)
 compare_candidates = FunctionTool(func=compare_candidates_fn)
 job_listing_tool = FunctionTool(func=list_jobs_from_db)
+code_execution_tool = FunctionTool(func=run_code_assignment)
