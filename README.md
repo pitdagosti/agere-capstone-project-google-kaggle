@@ -1,6 +1,6 @@
 # **PROJECT AGERE - AI-Powered Interview Readiness Coach**
 
-> 🏆 **Kaggle x Google Agents Intensive Capstone Project**  
+> 🏆 **Kaggle x Google Agents Intensive Capstone Project**
 > *Empowering job candidates to ace once-in-a-lifetime opportunities with confidence*
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
@@ -60,7 +60,8 @@ This project demonstrates mastery of **7 key concepts** from the Agents Intensiv
 Orchestrator (LlmAgent)
     ├── CV Analysis Agent → Analyzes resumes with custom tools
     ├── Job Listing Agent → Matches candidates to opportunities
-    ├── Code Assessment Agent → Validates programming skills
+    ├── Problem Presenter Tool → Displays hardcoded coding problems
+    ├── Code Evaluator Agent → Validates programming skills in sandbox
     ├── Language Assessment Agent → Tests language proficiency
     └── Scheduler Agent → Books interviews via Google Calendar
 ```
@@ -86,14 +87,17 @@ list_available_cvs() → str                # List uploaded CVs
 compare_candidates(file1, file2) → str    # Compare two candidates
 ```
 
-#### b) **Code Execution Sandbox** (FunctionTool)
+#### b) **Code Execution & Evaluation Tools** (FunctionTool)
 ```python
-run_code_assignment(code: str, expected_output: str, context: Any) → str
+problem_presenter_tool(job_title: str) → str          # Present hardcoded problem
+code_execution_tool(code: str, expected_output: str, context: Any) → str
 ```
+- **Hardcoded Problem Templates** for reliability (Backend, Fullstack, Data Science)
 - Secure multiprocessing sandbox with resource limits
 - Memory limit: 128MB, Timeout: 5 seconds
 - Platform-specific handling (macOS/Linux/Windows)
 - Context-aware evaluation with ToolContext
+- Two-phase process: Store expected output → Validate user code
 
 #### c) **Calendar Integration Tools** (FunctionTool)
 ```python
@@ -194,14 +198,16 @@ except ImportError:
 
 **Usage in Code Assessment:**
 ```python
-# Store expected output during problem generation
-context.set("expected_output", "5\n5\n1\n0")
-context.set("assessment_phase", "generation")
+# Store expected output during problem generation (PHASE 1)
+context.set("expected_output", "600\n3600\n0\n0\n1000")
+context.set("problem_generated", True)
 
-# Retrieve during evaluation
+# Retrieve during evaluation (PHASE 2)
 stored_expected = context.get("expected_output")
-if actual_output == stored_expected.strip():
-    return "✅ pass"
+if actual_output.strip() == stored_expected.strip():
+    return "pass"
+else:
+    return "not pass"
 ```
 
 **Benefits:**
@@ -296,14 +302,22 @@ resource.setrlimit(resource.RLIMIT_AS, (128 * 1024 * 1024, 128 * 1024 * 1024))
 resource.setrlimit(resource.RLIMIT_CPU, (timeout_seconds, timeout_seconds))
 ```
 
-**Usage in Assessment:**
+**Usage in Code Assessment:**
 ```python
-result = run_code_assignment(
-    code=user_solution,
-    expected_output="5\n5\n1\n0",
+# Phase 1: Store expected output
+run_code_assignment(
+    code="# Setup",
+    expected_output="600\n3600\n0\n0\n1000",
     context=tool_context
 )
-# Returns: "✅ pass" or "❌ not pass"
+
+# Phase 2: Evaluate user submission via code_evaluator_agent
+# Agent internally calls:
+result = run_code_assignment(
+    code=user_solution,
+    context=tool_context  # Uses stored expected output
+)
+# Returns: "pass" or "not pass"
 ```
 
 **Code Reference:** [`src/tools/code_sandbox.py`](src/tools/code_sandbox.py), [`src/tools/tools.py:144-250`](src/tools/tools.py)
@@ -372,7 +386,8 @@ graph TB
     subgraph "Specialized Agents (Sequential Flow)"
         CV[📄 CV Analysis Agent<br/>Resume Parser]
         JOB[🔍 Job Listing Agent<br/>SQLite Matcher]
-        CODE[💻 Code Assessment Agent<br/>Sandbox Evaluator]
+        PROB[📝 Problem Presenter Tool<br/>Hardcoded Templates]
+        CODE[💻 Code Evaluator Agent<br/>Sandbox Validator]
         LANG[🌍 Language Assessment Agent<br/>Proficiency Tester]
         SCHED[📅 Scheduler Agent<br/>Calendar Manager]
     end
@@ -387,6 +402,7 @@ graph TB
     UI <--> ORCH
     ORCH --> CV --> CVTOOLS
     ORCH --> JOB --> JOBDB
+    ORCH --> PROB
     ORCH --> CODE --> SANDBOX
     ORCH --> LANG
     ORCH --> SCHED --> GCAL
@@ -402,9 +418,12 @@ graph TB
 1. **Upload CV** → Streamlit saves to `temp_uploads/`
 2. **CV Analysis** → Custom tools parse PDF/TXT and extract skills
 3. **Job Matching** → SQLite database queries for relevant opportunities
-4. **Code Assessment** → Secure sandbox evaluates candidate solutions
-5. **Language Test** → Agent validates proficiency in claimed languages
-6. **Interview Scheduling** → Google Calendar API books appointments
+4. **Problem Presentation** → Hardcoded templates displayed via `problem_presenter_tool`
+5. **Expected Output Storage** → `code_execution_tool` stores answer key in ToolContext
+6. **Code Submission** → User provides solution with test cases
+7. **Code Evaluation** → `code_evaluator_agent` validates via secure sandbox
+8. **Language Test** → Agent validates proficiency in claimed languages
+9. **Interview Scheduling** → Google Calendar API books appointments
 
 ### Key Components
 
@@ -414,7 +433,8 @@ graph TB
 | **Orchestrator** | Central coordinator (LlmAgent) | Google ADK, Gemini 2.5 | ✅ Active |
 | **CV Analysis** | Resume parsing with custom tools | pdfplumber, PyPDF2 | ✅ Active |
 | **Job Matcher** | SQLite-based job recommendations | SQLite, Python | ✅ Active |
-| **Code Sandbox** | Secure Python execution | multiprocessing, resource | ✅ Active |
+| **Problem Presenter** | Hardcoded problem templates | Python dictionaries | ✅ Active |
+| **Code Evaluator** | Secure Python validation | multiprocessing, resource | ✅ Active |
 | **Language Test** | Proficiency validation | Gemini 2.5 | ✅ Active |
 | **Scheduler** | Google Calendar integration | OAuth2, Calendar API v3 | ✅ Active |
 | **Event Logger** | Full observability | JSON logging | ✅ Active |
@@ -439,9 +459,12 @@ graph TB
     2. Full-Stack Developer @ Stripe
     3. ML Engineer @ Meta
     ↓
-💻 Code Assessment
-    ├─ Problem: "Implement token counter function"
-    ├─ Sandbox: Secure execution with limits
+💻 Code Assessment (Two-Phase Process)
+    ├─ Phase 1: Present hardcoded problem template
+    ├─ Phase 2: Store expected output in ToolContext
+    ├─ Phase 3: User submits solution
+    ├─ Sandbox: Secure execution with resource limits
+    ├─ Validation: code_evaluator_agent compares outputs
     └─ Result: ✅ PASS (output matches expected)
     ↓
 🌍 Language Test
