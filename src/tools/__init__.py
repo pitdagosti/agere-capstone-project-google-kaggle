@@ -9,6 +9,7 @@ from .tools import (
     list_available_cvs, 
     compare_candidates, 
     job_listing_tool, # MODIFICATO: Esponiamo l'oggetto FunctionTool
+    code_execution_tool  
 )
 
 # Helper functions - Use these for utility purposes
@@ -31,4 +32,5 @@ __all__ = [
     'read_cv_file',
     'load_all_cvs',
     'CalendarClient',
+    'code_execution_tool'
 ]
