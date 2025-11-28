@@ -12,7 +12,15 @@ from pathlib import Path
 
 
 # Import custom tools
-from src.tools import read_cv, list_available_cvs, compare_candidates, job_listing_tool, code_execution_tool # MODIFICATO: Usiamo l'oggetto FunctionTool 'job_listing_tool'
+from src.tools import (
+    read_cv, 
+    list_available_cvs, 
+    compare_candidates, 
+    job_listing_tool, 
+    code_execution_tool,
+    language_assessment_generation_tool,
+    language_assessment_evaluation_tool
+)
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -177,11 +185,62 @@ code_assessment_agent = Agent(
     tools=[code_execution_tool]
 )
 
-# TODO: AGENT TO CREATE AN ASSESSMENT FOR THE CANDIDATE (LANGUAGE TEST)
-# This agent shuold create a language test assessment for the candidate. 
-# The assessment should be written in the language mentioned in the uploaded CV.
-# The candidate shuold be able to provide a message in the chat window to the agent as response to the assessment.
-# Provide assessment evaluation and feedback to the candidate.
+# Language Assessment Agent
+language_assessment_agent = Agent(
+    name="language_assessment_agent",
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
+    description="""
+        Professional language proficiency assessor. Generates language assessments tailored 
+        to candidate proficiency level, evaluates responses, and determines pass/not pass outcomes.
+        """,
+    instruction="""
+    You are an expert language proficiency assessor. You have two distinct modes of operation.
+
+    **MODE 1: Assessment Generation**
+    - When asked to assess a candidate's language proficiency, you will:
+      1. Determine the candidate's proficiency level (can be inferred from CV or explicitly stated)
+      2. Use the language_assessment_generation_tool to create a tailored assessment
+      3. Present the assessment clearly to the candidate with all instructions and tasks
+      4. Ask the candidate to provide their complete written response to the assessment
+
+    **MODE 2: Strict Evaluation**
+    - When the candidate provides their assessment response:
+      1. Take their complete written response
+      2. Use the language_assessment_evaluation_tool to evaluate it
+      3. The tool will return a result string
+      4. Extract ONLY the first word from the result (either "pass" or "not pass")
+      5. Your entire response MUST be the single word: `pass` or `not pass`. No explanations.
+
+    **ASSESSMENT GENERATION RULES:**
+    - Generate assessments matching the candidate's proficiency level
+    - Include clear instructions and task descriptions
+    - Provide word count guidance for responses
+    - Use proficiency-appropriate vocabulary and task complexity
+
+    **EVALUATION RULES:**
+    - You MUST use the language_assessment_evaluation_tool for every candidate response
+    - Your opinion about the response quality is IRRELEVANT
+    - Evaluation is based SOLELY on the tool's assessment result
+    - Final output MUST be either `pass` or `not pass`. No other words or explanations.
+    - After 2 failed attempts on the same job, inform the candidate the job is no longer available
+
+    **SUPPORTED LANGUAGES:**
+    English, Spanish, French, German, Italian, Portuguese, Dutch, Swedish, Polish, Russian,
+    Chinese, Japanese, Korean, Arabic, Hindi, and other languages (assessment tailored accordingly)
+
+    **PROFICIENCY LEVELS:**
+    - beginner: A1 Elementary
+    - elementary: A2 Elementary  
+    - intermediate: B1 Intermediate
+    - upper_intermediate: B2 Upper-Intermediate
+    - advanced: C1 Advanced
+    - proficient: C2 Mastery
+    - native: Native Speaker
+    """,
+    tools=[language_assessment_generation_tool, language_assessment_evaluation_tool]
+)
+
+print("✅ language_assessment_agent defined.")
 
 # TODO: AGENT TO SCHEDULE THE CANDIDATE FOR THE LIVE INTERVIEW
 # If the candidate is a good fit, the agent should schedule a live interview for the candidate.
@@ -220,15 +279,20 @@ orchestrator = LlmAgent(
             - If the response is `pass`: Congratulate the user for passing and ask if they are ready to proceed to the next step.
             - If the response is `not pass`: Inform the user that their submission did not pass. Politely ask them to review the assignment and submit a new solution. (Do not give technical feedback yourself).
 
-    4. STEP 4: Language Assessment
-       - If user selects a job AND the job requires language skills: call 'language_assessment_agent' passing the job details.
-       - The agent should generate a language assessment for the candidate.
-       - The assessment should be written in the language mentioned in the uploaded CV.
-       - The candidate should be able to provide a message in the chat window to the agent as response to the assessment.
-       - Provide assessment evaluation and feedback to the candidate.
-       - Ask: "Would you like me to schedule a live interview for you?"
-       - If user agrees, call 'scheduler_agent' to schedule the interview.
-       - The agent should schedule the interview for the candidate.
+    4. STEP 4: Language Assessment (if applicable)
+       - If user selects a job AND the job requires language skills: DELEGATE to 'language_assessment_agent'.
+       - PROCESS:
+         1) Generation Phase: Agent generates a tailored language assessment based on candidate's proficiency level
+         2) Submission Phase: Candidate provides their written response in the chat
+         3) Evaluation Phase: Agent evaluates the response using its evaluation tool
+         4) Result Phase: Agent returns ONLY "pass" or "not pass"
+       
+       - Handling the Result:
+         - If the response is `pass`: Congratulate the candidate and ask: "Would you like me to schedule a live interview for you?"
+         - If the response is `not pass`: Inform the candidate politely. Allow ONE retry on the same level.
+         - After 2 failures: Inform candidate this job is no longer available; suggest trying a different position.
+       
+       - CRITICAL: The language_assessment_agent response will be ONLY the word "pass" or "not pass" during evaluation.
     
     CRITICAL RULES:
     - ALWAYS delegate to sub-agents using their exact names.
@@ -239,7 +303,8 @@ orchestrator = LlmAgent(
     tools=[
         AgentTool(CV_analysis_agent), 
         AgentTool(job_listing_agent),
-        AgentTool(code_assessment_agent)
+        AgentTool(code_assessment_agent),
+        AgentTool(language_assessment_agent)
     ],
 )
 

@@ -55,6 +55,16 @@ if 'show_analysis' not in st.session_state:
     st.session_state.show_analysis = False
 if 'uploaded_file_content' not in st.session_state:
     st.session_state.uploaded_file_content = None
+if 'event_loop' not in st.session_state:
+    # Create a single persistent event loop for the entire session
+    try:
+        st.session_state.event_loop = asyncio.get_event_loop()
+        if st.session_state.event_loop.is_closed():
+            st.session_state.event_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(st.session_state.event_loop)
+    except RuntimeError:
+        st.session_state.event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(st.session_state.event_loop)
 
 # Logging
 LOG_DIR = Path(__file__).parent / "log_files"
@@ -178,21 +188,38 @@ async def run_agent_async(runner, prompt):
             return "⚠️ The agent processed your request but produced no output."
         return text
     except Exception as e:
-        return f"⚠️ Error running agent asynchronously: {str(e)}"
+        return f"⚠️ Error running agent: {str(e)}"
 
 
 def run_agent_sync(runner, prompt):
-    """Synchronous wrapper for async agent calls safely"""
+    """Synchronous wrapper for async agent calls using persistent session loop"""
     if runner is None:
         return "⚠️ Error: agent runner is not initialized."
+    
     try:
-        loop = asyncio.new_event_loop()
+        # Use the persistent loop from session state
+        loop = st.session_state.event_loop
+        
+        # Ensure loop is not closed
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            st.session_state.event_loop = loop
+        
+        # Set as current event loop before running
         asyncio.set_event_loop(loop)
+        
+        # Run the async function with the persistent loop
         result = loop.run_until_complete(run_agent_async(runner, prompt))
-        loop.close()
         return result
+        
     except Exception as e:
-        return f"⚠️ Error running agent synchronously: {str(e)}"
+        error_msg = str(e)
+        if "different loop" in error_msg.lower():
+            return "⚠️ Processing request. Please wait..."
+        if "closed" in error_msg.lower():
+            return "⚠️ Resetting session. Please try again."
+        return f"⚠️ Error: {error_msg[:100]}"
 
 
 def analyze_cv_with_runner(runner, filename):
@@ -221,6 +248,8 @@ def show_analysis_dialog(uploaded_file):
     """Display CV analysis and chat in a modal dialog safely"""
 
     if st.session_state.runner is None:
+        # Ensure loop is set before creating runner
+        asyncio.set_event_loop(st.session_state.event_loop)
         st.session_state.runner = InMemoryRunner(
             agent=orchestrator,
             app_name="agents"

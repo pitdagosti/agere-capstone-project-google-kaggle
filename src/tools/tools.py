@@ -8,6 +8,10 @@ import sqlite3
 import json
 import os
 from .code_sandbox import execute_code
+from .language_assessment import (
+    generate_assessment_for_candidate,
+    evaluate_candidate_response
+)
 
 # =============================================================================
 # CUSTOM ADK FUNCTIONS
@@ -266,3 +270,5 @@ list_available_cvs = FunctionTool(func=list_available_cvs_fn)
 compare_candidates = FunctionTool(func=compare_candidates_fn)
 job_listing_tool = FunctionTool(func=list_jobs_from_db)
 code_execution_tool = FunctionTool(func=run_code_assignment)
+language_assessment_generation_tool = FunctionTool(func=generate_assessment_for_candidate)
+language_assessment_evaluation_tool = FunctionTool(func=evaluate_candidate_response)
