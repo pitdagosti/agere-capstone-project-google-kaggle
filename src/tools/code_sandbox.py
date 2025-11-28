@@ -65,7 +65,8 @@ def _unsafe_execute(code, return_dict, memory_limit_mb):
                 "min": min, "max": max, "abs": abs, "round": round,
                 "int": int, "str": str, "list": list, "dict": dict, 
                 "tuple": tuple, "set": set, "float": float, "bool": bool,
-                "sorted": sorted, "enumerate": enumerate, "zip": zip
+                "sorted": sorted, "enumerate": enumerate, "zip": zip,
+                "reversed": reversed  # Added for common algorithmic patterns
             }
             safe_globals = {"__builtins__": safe_builtins}
             exec(code, safe_globals)
