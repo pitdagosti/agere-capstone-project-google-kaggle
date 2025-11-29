@@ -5,19 +5,20 @@ Main Streamlit Application
 Main entry point for the Agentic Recruiter application.
 Users can upload their CV/resume and interact with the AI-powered recruitment system.
 """
-
+from dotenv import load_dotenv
+load_dotenv()
 import streamlit as st
 import os
 import asyncio
 import html
-from dotenv import load_dotenv
+
 from pathlib import Path
 import json
 from datetime import datetime
 from google.adk.runners import InMemoryRunner
 
 from src.agents import *  # Tutti gli agenti, incluso orchestrator, sono importati qui.
-load_dotenv()
+
 
 # Explicitly set environment variables for ADK (needed for Streamlit)
 api_key = os.getenv("GOOGLE_API_KEY")
