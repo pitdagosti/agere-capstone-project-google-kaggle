@@ -467,7 +467,7 @@ WORKFLOW, MANDATORY TO FOLLOW STRICTLY:
 2. STEP 2: Job Listings Matching
    - If user agrees, call 'job_listing_agent' passing the extracted skills as `cv_summary`.
    - The agent will return job listings. You MUST format and display them properly.
-   - **CRITICAL**: Display jobs in this EXACT format:
+   - **CRITICAL**: YOU MUST Display jobs in this EXACT format:
    
    1. **Job Title** at Company
       - Location: [location]
@@ -514,6 +514,7 @@ WORKFLOW, MANDATORY TO FOLLOW STRICTLY:
       * If CV shows ANY language OTHER THAN English (with proficiency level like B1, B2, C1, C2, Native, Fluent) → Language assessment is REQUIRED
       * Examples that TRIGGER assessment: "Spanish: Fluent", "German: C2", "Portuguese: Native", "French: B1"
       * English-only candidates → Skip language assessment
+      * Specify that if user retrieves "Async Error" He should provide the answer again.
    
    - **TWO-PHASE PROCESS (both phases mandatory):**
    
