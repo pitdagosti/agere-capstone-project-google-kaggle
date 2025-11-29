@@ -20,7 +20,6 @@ from src.tools import (
     calendar_get_busy,
     calendar_book_slot,
     code_execution_tool,
-    problem_presenter_tool,
 )
 
 # Load environment variables
@@ -149,128 +148,110 @@ print("✅ job_listing_agent defined.")
 
 # --- AGENT ---
 
-# =============================================================================
-# CODE ASSESSMENT: PROBLEM TEMPLATES (100% RELIABLE)
-# =============================================================================
-
-CODING_PROBLEMS = {
-    "backend": {
-        "title": "User Data Aggregation",
-        "description": """Write a function `sum_even_user_values(users)` that takes a list of dictionaries. 
-Each dictionary has 'id' and 'value' keys. Sum the 'value' for users with even 'id'. 
-If the sum exceeds 1000, return double the sum. Otherwise, return the sum as is.""",
-        "test_code": """# Test Case 1: Basic test
-users1 = [{'id': 1, 'value': 100}, {'id': 2, 'value': 200}, {'id': 3, 'value': 300}, {'id': 4, 'value': 400}]
-print(sum_even_user_values(users1))
-
-# Test Case 2: Sum exceeds 1000
-users2 = [{'id': 2, 'value': 500}, {'id': 4, 'value': 600}, {'id': 6, 'value': 700}]
-print(sum_even_user_values(users2))
-
-# Test Case 3: No even IDs
-users3 = [{'id': 1, 'value': 100}, {'id': 3, 'value': 300}, {'id': 5, 'value': 500}]
-print(sum_even_user_values(users3))
-
-# Test Case 4: Empty list
-users4 = []
-print(sum_even_user_values(users4))
-
-# Test Case 5: Sum equals 1000
-users5 = [{'id': 2, 'value': 500}, {'id': 3, 'value': 100}, {'id': 4, 'value': 500}]
-print(sum_even_user_values(users5))""",
-        "expected_output": "600\n3600\n0\n0\n1000"  # Fixed: 1800 * 2 = 3600
-    },
-    "fullstack": {
-        "title": "Text Statistics Calculator",
-        "description": """Write a function `calculate_text_stats(text)` that returns a dictionary with:
-- 'word_count': total words (space-separated)
-- 'char_count': total characters including spaces
-- 'avg_word_length': average word length (0 if no words)
-- 'most_frequent_word': most frequent word (alphabetically first if tie, None if empty)""",
-        "test_code": """# Test Case 1
-print(calculate_text_stats("hello world hello"))
-
-# Test Case 2
-print(calculate_text_stats("one two three four five"))
-
-# Test Case 3
-print(calculate_text_stats(""))
-
-# Test Case 4
-print(calculate_text_stats("repeat repeat test test test"))""",
-        "expected_output": "{'word_count': 3, 'char_count': 17, 'avg_word_length': 5.0, 'most_frequent_word': 'hello'}\n{'word_count': 5, 'char_count': 23, 'avg_word_length': 3.6, 'most_frequent_word': 'five'}\n{'word_count': 0, 'char_count': 0, 'avg_word_length': 0, 'most_frequent_word': None}\n{'word_count': 5, 'char_count': 29, 'avg_word_length': 4.0, 'most_frequent_word': 'test'}"
-    },
-    "datascience": {
-        "title": "List Statistics",
-        "description": """Write a function `analyze_numbers(numbers)` that returns a dictionary with:
-- 'sum': sum of all numbers
-- 'min': minimum (None if empty)
-- 'max': maximum (None if empty)
-- 'average': average (None if empty)""",
-        "test_code": """# Test Case 1
-print(analyze_numbers([1, 2, 3, 4, 5]))
-
-# Test Case 2
-print(analyze_numbers([-10, 0, 10, 20]))
-
-# Test Case 3
-print(analyze_numbers([100]))
-
-# Test Case 4
-print(analyze_numbers([]))""",
-        "expected_output": "{'sum': 15, 'min': 1, 'max': 5, 'average': 3.0}\n{'sum': 20, 'min': -10, 'max': 20, 'average': 5.0}\n{'sum': 100, 'min': 100, 'max': 100, 'average': 100.0}\n{'sum': 0, 'min': None, 'max': None, 'average': None}"
-    },
-    "default": {
-        "title": "List Sum Calculator",
-        "description": """Write a function `sum_list(nums)` that returns the sum of all numbers in a list.""",
-        "test_code": """# Test Case 1
-print(sum_list([1, 2, 3]))
-
-# Test Case 2
-print(sum_list([10, 20, 30]))
-
-# Test Case 3
-print(sum_list([]))
-
-# Test Case 4
-print(sum_list([-5, 5]))""",
-        "expected_output": "6\n60\n0\n0"
-    }
-}
-
-def get_coding_problem(job_category="default"):
-    """Helper to get appropriate problem based on job type"""
-    # Map job keywords to problem categories
-    job_lower = job_category.lower()
-    if "backend" in job_lower or "api" in job_lower or "microservice" in job_lower:
-        return CODING_PROBLEMS["backend"]
-    elif "fullstack" in job_lower or "full-stack" in job_lower or "full stack" in job_lower:
-        return CODING_PROBLEMS["fullstack"]
-    elif "data" in job_lower or "scientist" in job_lower or "ml" in job_lower or "machine learning" in job_lower:
-        return CODING_PROBLEMS["datascience"]
-    else:
-        return CODING_PROBLEMS["default"]
-
-# =============================================================================
-# CODE EVALUATOR AGENT (SIMPLE & FOCUSED)
-# =============================================================================
-
-code_evaluator_agent = Agent(
-    name="code_evaluator_agent",
+code_assessment_agent = Agent(
+    name="code_assessment_agent",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
-    description="""Evaluates submitted code by executing it and comparing output.""",
-    instruction="""You are a code evaluator. Your job is VERY SIMPLE.
+    description="""
+        Professional coding interviewer assistant. Generates a single, simple code exercise,
+        executes the submitted solution in a sandbox, and provides a 'pass' or 'not pass' evaluation.
+        """,
+    instruction="""
+    You are an expert coding assessment agent. You have two distinct modes of operation.
 
-**STEP 1**: Call the tool `run_code_assignment` with the code provided in the request.
+    **MODE 1: Assignment Generation**
+    - This is your creative task. You will be asked to create an assignment for a specific job role.
+    - **Assignment Generation Rules:**
+      1. You MUST generate **one single, self-contained coding problem**. Not a multi-step quiz.
+      2. The problem MUST be **simple and solvable in a few lines of code**. Avoid complex projects like building a full API.
+      3. **CRITICAL - TEST CASES**: You MUST provide test cases AT THE END of the problem. The candidate should include these test cases in their submission, which will print the expected output.
+      4. **CRITICAL**: The code will run in a RESTRICTED SANDBOX. You CANNOT use: import, os, sys, subprocess, open, input, eval, exec.
+         Only use BUILT-IN Python functions: print, range, len, sum, min, max, abs, round, int, str, list, dict, tuple, set, float, bool, sorted, enumerate, zip.
+      5. **CRITICAL - EXPECTED OUTPUT FORMAT**: When showing test cases, you MUST explicitly state the expected output line by line.
+      6. **GOOD EXAMPLE:** 
+         "Write a Python function `sum_even(numbers)` that returns the sum of all even integers in the list.
+         
+         Test your function with these cases:
+         ```python
+         print(sum_even([1, 2, 3, 4, 5, 6]))  # Expected: 12
+         print(sum_even([10, 15, 20]))  # Expected: 30
+         ```
+         
+         **Expected Output:**
+         ```
+         12
+         30
+         ```"
+      7. **GOOD EXAMPLE:** "Write a function `max_nested(lst)` that finds the maximum value in a nested list structure.
+         
+         Test your function:
+         ```python
+         print(max_nested([[1, 2], [3, 4, 5]]))  # Expected: 5
+         ```
+         
+         **Expected Output:**
+         ```
+         5
+         ```"
+      8. **BAD EXAMPLE:** "Build a complete REST API for a product catalog." (too complex)
+      9. **BAD EXAMPLE:** "Use OpenCV to convert an image to grayscale." (requires import)
+      10. **BAD EXAMPLE:** A problem without test cases that print expected output.
+      11. **BAD EXAMPLE:** A problem without an "Expected Output" section.
+    
+    - **CRITICAL - TWO-STEP PROCESS:**
+      STEP A: First, generate the problem text with test cases and expected output as shown above.
+      STEP B: In the SAME response, immediately call the `run_code_assignment` tool to store the expected output:
+              Example: If expected output is "12\n30", call:
+              `run_code_assignment(code="", expected_output="12\n30")`
+              
+      **YOU MUST DO BOTH STEPS IN ONE RESPONSE!**
+      
+    - After generating the problem AND storing the expected output, include this exact warning:
+      
+      **CONSTRAINTS:**
+      - DO NOT use any import statements (no libraries allowed)
+      - Only use Python built-in functions: print, range, len, sum, min, max, abs, round, int, str, list, dict, tuple, set, float, bool, sorted, enumerate, zip
+      - Your code will run in a restricted sandbox environment
+      
+      **IMPORTANT:**
+      - Include the test cases at the end of your code
+      - The test cases will print the expected output
+      - Make sure to define your function AND call it with the test cases
+      
+    - Then ask the user to submit their complete code (function + test cases).
 
-**STEP 2**: Read the tool's response:
-- If it contains "✅ PASS" → respond with exactly: pass
-- If it contains "❌ FAIL" or "❌" or "FAIL" → respond with exactly: not pass
+    **MODE 2: Strict Evaluation with Output Comparison**
+    - This happens when the user provides code. Your task is to evaluate it using a strict, deterministic process.
+    - **PROCESS:**
+      1. Take the user's code.
+      2. You **MUST** use the `run_code_assignment` tool to execute it (pass only the code).
+      3. The tool will return execution results.
+      4. **CRITICAL - EXTRACT EXPECTED OUTPUT:**
+         a. Look back at the problem you generated (it's in your conversation history, just a few messages up).
+         b. Find the section labeled "**Expected Output:**"
+         c. Extract the exact text between the code fences after that heading.
+         d. This is what the user's code should produce.
+      5. **COMPARISON LOGIC:**
+         - If tool result starts with "❌" (execution error) → Response: `not pass`
+         - If tool result starts with "✅ PASS" (Context comparison worked) → Response: `pass`
+         - If tool result starts with "✅ Code executed successfully":
+           * Extract actual output (after "Output:")
+           * Compare line-by-line with expected output from step 4
+           * Ignore leading/trailing whitespace on each line
+           * If they match → Response: `pass`
+           * If they don't match OR output is empty → Response: `not pass`
+      6. **Examples:**
+         - Expected from problem: "5\n5\n1\n0"
+         - Tool returns: "✅ Code executed successfully!\nOutput:\n5\n5\n1\n0" → `pass` ✅
+         - Tool returns: "✅ Code executed successfully!\nOutput:\n5\n4\n1\n0" → `not pass` ❌ (line 2 wrong)
+         - Tool returns: "✅ Code executed successfully!\nOutput:\n" → `not pass` ❌ (empty)
+         - Tool returns: "❌ Execution Error: ..." → `not pass` ❌
 
-**YOUR RESPONSE MUST BE EXACTLY ONE WORD**: either `pass` or `not pass`
-
-No explanations. No extra text. Just one word.
-""",
+    **ABSOLUTE RULES FOR EVALUATION:**
+    - Extract expected output from YOUR OWN previous message (the problem you generated)
+    - Compare actual output line-by-line (after stripping whitespace)
+    - Be precise: "5" ≠ "5.0" (unless problem allows it)
+    - Your final output MUST BE either `pass` or `not pass`. No other words or explanations.
+    """,
     tools=[code_execution_tool]
 )
 
@@ -348,33 +329,30 @@ scheduler_agent = Agent(
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
     description="Agent that schedules interviews using Google Calendar.",
     instruction="""
-    You schedule interviews for candidates who have passed their assessments.
+    You schedule interviews only AFTER receiving 'assignment_result: pass'.
 
-    **WORKFLOW**:
-    1. **Check Assessment Status** (usually provided in the request context)
-       - If explicitly told assessment was NOT passed → inform user and stop
-       - If told assessment WAS passed or context suggests scheduling → proceed
-    
-    2. **Fetch Available Slots**:
-       - Call `calendar_get_busy` to check busy periods
-       - Suggest 3-5 free time slots to the candidate
-       - Format: "Date, Time range (e.g., May 4, 2024, 2:00 PM - 3:00 PM)"
-    
-    3. **Wait for User Selection**:
-       - User will choose a slot (by number or description)
-    
-    4. **Book the Interview**:
-       - Call `calendar_book_slot` with the selected time
-       - Provide confirmation with event details
-    
-    **IMPORTANT**:
-    - Always check calendar availability first
-    - Only book ONE slot per candidate
-    - If calendar tools return errors (CALENDAR_NOT_CONFIGURED), inform user to contact interviewer directly
-    - Be professional and encouraging
-    
-    **Example Response When Calendar Not Configured**:
-    "Google Calendar integration is not currently configured. Please contact the interviewer directly at [email] to schedule your interview."
+    WORKFLOW:
+    1. If assignment_result = 'failed', respond: 'The assessment was not passed. No scheduling will occur.'
+    2. If assignment_result = 'pass':
+       - Call the tool `calendar_get_busy` with appropriate start/end times (e.g., next 7 days).
+       - **CRITICAL ERROR HANDLING**: Check the tool's response:
+         * If response starts with "❌ CALENDAR_NOT_CONFIGURED" → Display the configuration error to the user with clear instructions.
+         * If response starts with "❌ CALENDAR_API_ERROR" → Inform the user that Calendar integration is not available and suggest manual scheduling.
+         * If response starts with "✅ Successfully fetched" → Parse busy slots and propose free times.
+       - If calendar is configured correctly:
+         * Propose 3-5 free time slots to the candidate.
+         * Ask the candidate to pick one.
+         * When the candidate confirms a time, use `calendar_book_slot` to create the event.
+         * After booking, confirm the booking details.
+       - If calendar is NOT configured:
+         * Inform the user: "Google Calendar integration is not currently configured. Please contact the interviewer directly to schedule your interview."
+
+    RULES:
+    - Do NOT infer busy slots manually; always call the tool first.
+    - If the tool returns an error (starts with ❌), display the error message to the user clearly.
+    - Continue asking the user until they confirm a specific time (only if calendar is configured).
+    - Validate ISO datetime formats before booking.
+    - Always check tool responses for success (✅) or error (❌) indicators.
     """,
     tools=[calendar_get_busy, calendar_book_slot]
 )
@@ -399,7 +377,7 @@ WORKFLOW AUTOMATICO:
    - Then ask: "Would you like me to find job listings that match your profile?"
 
 2. STEP 2: Job Listings Matching
-   - If user agrees, CALL 'job_listing_agent' passing the extracted skills as `cv_summary`.
+   - If user agrees, call 'job_listing_agent' passing the extracted skills as `cv_summary`.
    - The agent will return job listings. You MUST format and display them properly.
    - **CRITICAL**: Display jobs in this EXACT format:
    
@@ -418,82 +396,64 @@ WORKFLOW AUTOMATICO:
    - After displaying ALL jobs with numbers, ask: "Which job interests you most? (Choose by selecting the number)".
    - When user provides a number, map it to the corresponding job and proceed to code assessment.
 
-3. STEP 3: Code Assessment (TWO-PHASE PROCESS - 100% RELIABLE)
+3. STEP 3: Code Assessment (TWO-PHASE PROCESS)
    - **MANDATORY**: ALL software/engineering jobs require a code assessment. Do NOT skip this step.
    
-   **PHASE 1: Present Coding Problem & Store Expected Output**
-   - After user selects a job number, follow this EXACT process:
-   
-   **Step 1**: Call `present_coding_problem_fn` with the selected job title
-   - Example: `present_coding_problem_fn(job_title="Backend Engineer – API & Microservices")`
-   - This returns the formatted problem statement
-   
-   **Step 2**: IMMEDIATELY call `run_code_assignment` to store the expected output (SETUP ONLY)
-   - **CRITICAL**: This is the ONLY time you use `run_code_assignment` directly. You will NEVER call it again in this workflow.
-   - Extract job category from the job title
-   - Use these mappings:
-     * "backend" or "api" or "microservice" → expected: "600\n3600\n0\n0\n1000"
-     * "fullstack" or "full-stack" → expected: "{'word_count': 3, 'char_count': 17, 'avg_word_length': 5.0, 'most_frequent_word': 'hello'}\n{'word_count': 5, 'char_count': 23, 'avg_word_length': 3.6, 'most_frequent_word': 'five'}\n{'word_count': 0, 'char_count': 0, 'avg_word_length': 0, 'most_frequent_word': None}\n{'word_count': 5, 'char_count': 29, 'avg_word_length': 4.0, 'most_frequent_word': 'test'}"
-     * "data" or "scientist" or "ml" → expected: "{'sum': 15, 'min': 1, 'max': 5, 'average': 3.0}\n{'sum': 20, 'min': -10, 'max': 20, 'average': 5.0}\n{'sum': 100, 'min': 100, 'max': 100, 'average': 100.0}\n{'sum': 0, 'min': None, 'max': None, 'average': None}"
-     * default → expected: "6\n60\n0\n0"
-   - Example: `run_code_assignment(code="# Setup", expected_output="600\n3600\n0\n0\n1000")`
-   - After this, you are DONE with `run_code_assignment`. Do NOT call it again.
-   
-   **Step 3**: Display the problem to the user (the tool already returned it in Step 1)
-   
-   **Step 4**: Wait for the candidate to submit their code.
+   **PHASE 1: Generate Assessment Problem**
+   - After user selects a job number, IMMEDIATELY call 'code_assessment_agent'.
+   - **CRITICAL REQUEST FORMAT**: Your request MUST clearly ask to GENERATE a problem:
+     Example: "Generate a code assessment problem for [Job Title] role. Required skills: [skills list]."
+     DO NOT say: "Evaluate candidate for..." (that's Phase 2!)
+   - The agent will return a complete problem statement with:
+     * Problem description
+     * Test cases
+     * Expected output
+     * Constraints
+   - **CRITICAL**: You MUST display the FULL assessment details to the user.
+     Do NOT summarize or paraphrase. Show the complete problem statement, requirements, examples, and instructions.
+   - Wait for the candidate to provide their solution in the chat window.
    
    **PHASE 2: Evaluate Submission**
-   - When user submits code, YOU MUST ONLY call 'code_evaluator_agent' (NOT run_code_assignment directly).
-   - **CRITICAL RULE**: You are FORBIDDEN from calling 'run_code_assignment' with user code. Only 'code_evaluator_agent' can evaluate user code.
-   - Pass the user's complete code to the agent: `code_evaluator_agent(request="<user's complete code>")`
-   - The agent will internally:
-     * Call `run_code_assignment(code=user_code)`
-     * Compare output with stored expected output
+   - Once code is submitted, call 'code_assessment_agent' again to evaluate it.
+   - **CRITICAL REQUEST FORMAT**: Pass the user's code EXACTLY as they submitted it.
+     Example request: "[paste exact code here]"
+     DO NOT add extra text like "Evaluate this code:" or "Check correctness:"
+     Just send the raw code!
+   - The agent will:
+     * Execute the code in sandbox
+     * Compare output vs expected
      * Return either 'pass' or 'not pass'
-   - Wait for the agent's response.
    - **Store the assessment result** (pass/not pass) for the scheduling step.
-   - Display result to user clearly:
-     * If 'pass': "✅ Code assessment passed! Proceeding to next step..."
-     * If 'not pass': "❌ Code assessment did not pass. [Show feedback from agent]"
 
-4. STEP 4: Language Assessment (MANDATORY for multilingual candidates ONLY IF code assessment passed)
-   - **CRITICAL**: You can ONLY proceed to language assessment if STEP 3 (code assessment) returned 'pass'.
-   - **If code assessment returned 'not pass', SKIP language assessment and inform the user they need to pass the code assessment first.**
-   - **Language Assessment Trigger (only if code passed):**
+4. STEP 4: Language Assessment (MANDATORY for multilingual candidates)
+   - **CRITICAL**: After code assessment passes, you MUST check the CV analysis from STEP 1.
+   - **Language Assessment Trigger:**
       * If CV shows ANY language OTHER THAN English (with proficiency level like B1, B2, C1, C2, Native, Fluent) → Language assessment is REQUIRED
       * Examples that TRIGGER assessment: "Spanish: Fluent", "German: C2", "Portuguese: Native", "French: B1"
       * English-only candidates → Skip language assessment
    - **PROCESS:**
-      1. **VERIFY code assessment result is 'pass' before proceeding**
-      2. Identify the highest proficiency non-English language from CV
-      3. Call 'language_assessment_agent' with: 
+      1. Identify the highest proficiency non-English language from CV
+      2. Call 'language_assessment_agent' with: 
          - Candidate CV information (including language section)
          - Selected job details
          - Instruction: "Test proficiency in [language] at [level]"
-      4. Display the language test to the user
-      5. Wait for candidate's response in the tested language
-      6. Call 'language_assessment_agent' again to evaluate the response
-      7. Display evaluation result: `proficiency_confirmed` or `proficiency_needs_improvement`
-   - **Note**: Language assessment result is informational and does NOT block scheduling (but you must pass code assessment first).
+      3. Display the language test to the user
+      4. Wait for candidate's response in the tested language
+      5. Call 'language_assessment_agent' again to evaluate the response
+      6. Display evaluation result: `proficiency_confirmed` or `proficiency_needs_improvement`
+   - **Note**: Language assessment result is informational and does NOT block scheduling.
 
 5. STEP 5: Schedule Live Interview
    - **CRITICAL**: Only proceed to scheduling if STEP 3 (code assessment) returned 'pass'.
-   - **If code assessment result is 'not pass':**
-      * Inform the user: "Your code assessment did not pass. You need to pass the code assessment before scheduling an interview."
-      * DO NOT proceed to language assessment
-      * DO NOT call scheduler_agent
-      * Offer the user options: retry the assessment, try a different job, or ask for feedback
-   - **If code assessment result is 'pass' AND language assessment is complete (if applicable):**
-      * Call 'scheduler_agent' with the assessment_result
-      * The scheduler will:
-        - Fetch busy slots using `calendar_get_busy`.
-        - Propose free slots to the candidate.
-        - Ask the candidate to confirm a preferred time.
-        - Book the selected slot using `calendar_book_slot`.
-        - Return confirmation with start, end, and event ID.
+   - If code assessment result is 'not pass', inform the user and DO NOT call scheduler_agent.
+   - If code assessment result is 'pass' AND language assessment is complete (if applicable), call 'scheduler_agent' with the assessment_result.
+   - The scheduler will:
+       - Fetch busy slots using `calendar_get_busy`.
+       - Propose free slots to the candidate.
+       - Ask the candidate to confirm a preferred time.
+       - Book the selected slot using `calendar_book_slot`.
+       - Return confirmation with start, end, and event ID.
    - **NEVER skip to scheduling without a code assessment pass result.**
-   - **NEVER proceed to language assessment if code assessment failed.**
 
 CRITICAL RULES:
 - ALWAYS delegate to sub-agents using their exact names.
@@ -504,16 +464,14 @@ CRITICAL RULES:
 - **ALWAYS display the FULL response from sub-agents to the user. NEVER summarize or paraphrase.**
 - When CV_analysis_agent returns analysis, show the ENTIRE analysis with all sections.
 - When job_listing_agent returns jobs, format them with clear numbers (1, 2, 3...) and ALL details.
-- When presenting a code assessment, show the ENTIRE problem statement to the user.
+- When code_assessment_agent returns an assignment, show the ENTIRE problem statement to the user.
 - **DO NOT SKIP showing information. Users CANNOT see what sub-agents return unless you display it.**
 - **WORKFLOW ORDER: CV Analysis → Job Selection → Code Assessment → (if pass) Scheduling**
 """,
     tools=[
         AgentTool(CV_analysis_agent),
         AgentTool(job_listing_agent),
-        problem_presenter_tool,  # Function tool for presenting problems
-        code_execution_tool,  # Function tool for storing expected output
-        AgentTool(code_evaluator_agent),
+        AgentTool(code_assessment_agent),
         AgentTool(language_assessment_agent),
         AgentTool(scheduler_agent),
     ],
