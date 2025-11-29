@@ -408,38 +408,41 @@ language_assessment_agent = Agent(
 # If the candidate is a good fit, the agent should schedule a live interview for the candidate.
 # PitDagosti's tool leveraging google calendar API should be used to schedule the interview.
 
+# Scheduler Agent aggiornato
 scheduler_agent = Agent(
     name="scheduler_agent",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
-    description="Agent that schedules interviews using Google Calendar.",
+    description="Agent that schedules interviews using Google Calendar, robust token handling.",
     instruction="""
-    You schedule interviews only AFTER receiving 'assignment_result: pass'.
+        You schedule interviews only AFTER receiving 'assignment_result: pass'.
 
-    WORKFLOW:
-    1. If assignment_result = 'failed', respond: 'The assessment was not passed. No scheduling will occur.'
-    2. If assignment_result = 'pass':
-       - Call the tool `calendar_get_busy` with appropriate start/end times (e.g., next 7 days).
-       - **CRITICAL ERROR HANDLING**: Check the tool's response:
-         * If response starts with "❌ CALENDAR_NOT_CONFIGURED" → Display the configuration error to the user with clear instructions.
-         * If response starts with "❌ CALENDAR_API_ERROR" → Inform the user that Calendar integration is not available and suggest manual scheduling.
-         * If response starts with "✅ Successfully fetched" → Parse busy slots and propose free times.
-       - If calendar is configured correctly:
-         * Propose 3-5 free time slots to the candidate.
-         * Ask the candidate to pick one.
-         * When the candidate confirms a time, use `calendar_book_slot` to create the event.
-         * After booking, confirm the booking details.
-       - If calendar is NOT configured:
-         * Inform the user: "Google Calendar integration is not currently configured. Please contact the interviewer directly to schedule your interview."
+        WORKFLOW ROBUSTO:
+        1. Only proceed if assignment_result = 'pass'.
+        2. Verify Google Calendar credentials:
+        - Check that GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN are set.
+        - If not, display: 'Google Calendar credentials are missing. Please configure them in environment variables.'
+        3. Attempt to refresh the access token using the refresh token.
+        - If refresh fails, show a clear error and stop scheduling.
+        4. Check busy slots with `calendar_get_busy`.
+        - If successful (response starts with ✅), propose 3-5 free time slots to the candidate.
+        - If response fails, log the error but DO NOT block scheduling. You can still attempt to book a slot if a valid token exists.
+        5. When candidate selects a time:
+        - Use `calendar_book_slot` to create the event on the calendar with calendarId="primary".
+        - Confirm event creation with start, end, and event link.
+        6. Always log:
+        - Access token used
+        - API response from calendar_book_slot
+        - Any errors or warnings
 
-    RULES:
-    - Do NOT infer busy slots manually; always call the tool first.
-    - If the tool returns an error (starts with ❌), display the error message to the user clearly.
-    - Continue asking the user until they confirm a specific time (only if calendar is configured).
-    - Validate ISO datetime formats before booking.
-    - Always check tool responses for success (✅) or error (❌) indicators.
-    """,
+        ERROR HANDLING:
+        - If access token is invalid, attempt refresh automatically.
+        - If Calendar API returns errors (401, 403, 404), display only actionable messages:
+        * "Failed to create event: check your Google Calendar account or token."
+        - Never show "integration not configured" message if credentials are valid.
+        """,
     tools=[calendar_get_busy, calendar_book_slot]
 )
+
 
 # --- ORCHESTRATOR AGENT ---
 
