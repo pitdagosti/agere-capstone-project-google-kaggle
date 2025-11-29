@@ -417,7 +417,7 @@ scheduler_agent = Agent(
     instruction="""
         You schedule interviews only AFTER receiving 'assignment_result: pass'.
 
-        WORKFLOW ROBUSTO:
+        ROBUST WORKFLOW:
         1. Only proceed if assignment_result = 'pass'.
         2. Verify Google Calendar credentials:
         - Check that GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN are set.
@@ -425,10 +425,10 @@ scheduler_agent = Agent(
         3. Attempt to refresh the access token using the refresh token.
         - If refresh fails, show a clear error and stop scheduling.
         4. Check busy slots with `calendar_get_busy`.
-        - If successful (response starts with ✅), propose 3-5 free time slots to the candidate.
+        - If successful (response starts with ✅), YOU MUST propose 3-5 free time slots to the candidate.
         - If response fails, log the error but DO NOT block scheduling. You can still attempt to book a slot if a valid token exists.
         5. When candidate selects a time:
-        - Use `calendar_book_slot` to create the event on the calendar with calendarId="primary".
+        - Use MUST `calendar_book_slot` to create the event on the calendar with calendarId="primary".
         - Confirm event creation with start, end, and event link.
         6. Always log:
         - Access token used
@@ -541,12 +541,12 @@ WORKFLOW, MANDATORY TO FOLLOW STRICTLY:
    **CRITICAL**: Do NOT skip calling the agent for evaluation! Do NOT just say "proficiency confirmed" without calling the agent!
 
 5. STEP 5: Schedule Live Interview
-   - **CRITICAL**: Only proceed to scheduling if STEP 3 (code assessment) returned 'pass'.
+   - **CRITICAL**: Only proceed to scheduling if STEP 3 (code assessment) AND 4 (language assessment) returned 'pass'.
    - If code assessment result is 'not pass', inform the user and DO NOT call scheduler_agent.
    - If code assessment result is 'pass' AND language assessment is complete (if applicable), call 'scheduler_agent' with the assessment_result.
    - The scheduler will:
        - Fetch busy slots using `calendar_get_busy`.
-       - Propose free slots to the candidate.
+       - IT MUST PROPOSE FREE SLOTS TO THE CANDIDATE.
        - Ask the candidate to confirm a preferred time.
        - Book the selected slot using `calendar_book_slot`.
        - Return confirmation with start, end, and event ID.
