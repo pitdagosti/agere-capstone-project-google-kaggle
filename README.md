@@ -50,277 +50,88 @@ AGERE provides:
 
 ## 🎓 Course Concepts Applied
 
-This project demonstrates mastery of **7 key concepts** from the Agents Intensive course:
+### 1. 🤖 Multi-Agent Hierarchical System
 
-### 1. 🤖 Multi-Agent System ✅ IMPLEMENTED
-
-**Hub-and-Spoke Hierarchical Architecture**
+**Hub-and-Spoke Architecture with Specialized Agents:**
 
 ```
-Orchestrator (LlmAgent)
-    ├── CV Analysis Agent → Analyzes resumes with custom tools
-    ├── Job Listing Agent → Matches candidates to opportunities
-    ├── Problem Presenter Tool → Displays hardcoded coding problems
-    ├── Code Evaluator Agent → Validates programming skills in sandbox
-    ├── Language Assessment Agent → Tests language proficiency
-    └── Scheduler Agent → Books interviews via Google Calendar
+Orchestrator (LlmAgent) → Sequential workflow coordinator
+├── CV Analysis Agent → Resume parsing & skill extraction
+├── Job Listing Agent → SQLite-based job matching
+├── Problem Presenter Tool → Pre-programmed coding challenges
+├── Code Assessment Agent → Sandbox-based code evaluation
+├── Language Assessment Agent → Multilingual proficiency testing
+└── Scheduler Agent → Google Calendar integration
 ```
 
-**Implementation:**
-- **Orchestrator Agent** (`LlmAgent`) - Central coordinator managing workflow
-- **Sequential Agents** - CV Analysis → Job Matching → Assessment → Scheduling flow
-- **Specialized Sub-Agents** - Each agent has a specific domain expertise
-- **Agent Communication** - Sub-agents return structured results to orchestrator
-
-**Code Reference:** [`src/agents/agents.py:355-484`](src/agents/agents.py)
+**Code:** [`src/agents/agents.py`](src/agents/agents.py)
 
 ---
 
-### 2. 🛠️ Custom Tools ✅ IMPLEMENTED
+### 2. 🛠️ Custom Tools with Security & Context
 
-**Four Categories of Custom Tools:**
+**CV Processing:** `read_cv()`, `list_available_cvs()`, `compare_candidates()`
+**Code Evaluation:** Sandboxed execution with ToolContext for reliable output validation
+**Calendar API:** OAuth2-secured interview scheduling
+**Job Database:** SQLite queries with skill matching
 
-#### a) **CV Processing Tools** (FunctionTool)
-```python
-read_cv(filename: str) → str              # Parse PDF/TXT resumes
-list_available_cvs() → str                # List uploaded CVs
-compare_candidates(file1, file2) → str    # Compare two candidates
-```
+**Security Features:**
+- 128MB memory limit, 5-second timeout
+- Process isolation via multiprocessing
+- Forbidden keywords (imports, file I/O, network)
+- Platform-specific optimization (macOS/Linux/Windows)
 
-#### b) **Code Execution & Evaluation Tools** (FunctionTool)
-```python
-problem_presenter_tool(job_title: str) → str          # Present hardcoded problem
-code_execution_tool(code: str, expected_output: str, context: Any) → str
-```
-- **Hardcoded Problem Templates** for reliability (Backend, Fullstack, Data Science)
-- Secure multiprocessing sandbox with resource limits
-- Memory limit: 128MB, Timeout: 5 seconds
-- Platform-specific handling (macOS/Linux/Windows)
-- Context-aware evaluation with ToolContext
-- Two-phase process: Store expected output → Validate user code
+**Code:** [`src/tools/tools.py`](src/tools/tools.py), [`src/tools/code_sandbox.py`](src/tools/code_sandbox.py)
 
-#### c) **Calendar Integration Tools** (FunctionTool)
-```python
-calendar_get_busy(start: str, end: str) → str        # Query availability
-calendar_book_slot(start: str, end: str) → str       # Book interview
-```
-- OAuth2 authentication with Google Calendar API v3
-- Real-time availability checking
-- Automatic event creation
+### 3. 🔌 Google Calendar Integration (MCP Concept)
 
-#### d) **Job Listing Tool** (FunctionTool)
-```python
-job_listing_tool(cv_summary: str) → str   # SQLite database queries
-```
+**OAuth2-secured scheduling** with direct Calendar API integration for reliability.
 
-**Code Reference:** [`src/tools/tools.py`](src/tools/tools.py), [`src/tools/code_sandbox.py`](src/tools/code_sandbox.py)
+**Code:** [`src/tools/tools.py`](src/tools/tools.py)
 
 ---
 
-### 3. 🔌 Model Context Protocol (MCP) - Google Calendar ✅ IMPLEMENTED
+### 4. 💾 State Management
 
-**Direct Google Calendar API Integration**
+**Streamlit Session State:** Multi-turn conversation memory with persistent CV analysis and chat history.
 
-Instead of a separate MCP server, we integrated Google Calendar API directly into our tools layer for simplicity and reliability:
-
-```python
-# Direct OAuth2 authentication
-def get_calendar_service():
-    creds = Credentials(
-        None,
-        refresh_token=os.getenv("GOOGLE_REFRESH_TOKEN"),
-        client_id=os.getenv("GOOGLE_CLIENT_ID"),
-        client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
-        token_uri="https://oauth2.googleapis.com/token",
-    )
-    service = build('calendar', 'v3', credentials=creds)
-    return service
-```
-
-**Features:**
-- ✅ Query busy time slots
-- ✅ Book interview appointments
-- ✅ OAuth2 secure authentication
-- ✅ Timezone handling (Europe/Rome)
-- ✅ Email invitations to attendees
-
-**Configuration:**
-```bash
-GOOGLE_CLIENT_ID=your_client_id
-GOOGLE_CLIENT_SECRET=your_client_secret
-GOOGLE_REFRESH_TOKEN=your_refresh_token
-CALENDAR_ID=your_email@gmail.com
-```
-
-**Code Reference:** [`src/tools/tools.py:42-141`](src/tools/tools.py)
+**Code:** [`main.py`](main.py)
 
 ---
 
-### 4. 💾 Sessions & State Management ✅ IMPLEMENTED
+### 5. 🧠 ToolContext Engineering
 
-**Streamlit Session State for Conversation Context**
+**Critical for Code Assessment Reliability:**
 
-```python
-# Multi-turn conversation memory
-st.session_state.messages = []           # Chat history
-st.session_state.cv_content = None       # Uploaded CV content
-st.session_state.cv_filename = None      # Current file
-st.session_state.analysis_complete = False
-```
-
-**Features:**
-- ✅ Persistent conversation history across interactions
-- ✅ State preserved during page reloads
-- ✅ Context maintained for follow-up questions
-- ✅ File upload state management
-
-**Code Reference:** [`main.py:66-82`](main.py)
-
----
-
-### 5. 🧠 Context Engineering - ToolContext ✅ IMPLEMENTED
-
-**State Management Across Agent Turns**
-
-```python
-# Mock ToolContext for backwards compatibility
-try:
-    from google.adk.tools import ToolContext
-except ImportError:
-    class ToolContext:
-        def __init__(self):
-            self._data = {}
-        def set(self, key, value):
-            self._data[key] = value
-        def get(self, key, default=None):
-            return self._data.get(key, default)
-```
-
-**Usage in Code Assessment:**
-```python
-# Store expected output during problem generation (PHASE 1)
-context.set("expected_output", "600\n3600\n0\n0\n1000")
-context.set("problem_generated", True)
-
-# Retrieve during evaluation (PHASE 2)
-stored_expected = context.get("expected_output")
-if actual_output.strip() == stored_expected.strip():
-    return "pass"
-else:
-    return "not pass"
-```
-
-**Benefits:**
-- ✅ Reliable state persistence across turns
-- ✅ Backwards compatible with older ADK versions
-- ✅ Type-safe context management
-- ✅ Clear separation between generation and evaluation phases
-
-**Code Reference:** [`src/tools/tools.py:19-37, 144-250`](src/tools/tools.py)
-
----
-
-### 6. 👁️ Observability - Logging & Tracing ✅ IMPLEMENTED
-
-**Comprehensive Event Logging**
-
-```python
-# Log every agent interaction
-def log_event(agent_name, tool_name, input_text, output_text, event_type):
-    event = {
-        "timestamp": time.time(),
-        "agent_name": agent_name,
-        "tool_name": tool_name,
-        "input_text": input_text,
-        "output_text": output_text,
-        "type": event_type  # "tool_call", "tool_result", "response", "user_input"
-    }
-    with open("log_files/runner_events.log", "a") as f:
-        f.write(json.dumps(event) + "\n")
-```
-
-**What Gets Logged:**
-- ✅ Every agent call with parameters
-- ✅ All tool executions and results
-- ✅ User inputs and system responses
-- ✅ Timestamps for performance analysis
-- ✅ Error messages and stack traces
-
-**Example Log Entry:**
-```json
-{
-  "timestamp": 1764357804.120875,
-  "agent_name": "Orchestrator",
-  "tool_name": "language_assessment_agent",
-  "input_text": "Test proficiency in German at C2 level...",
-  "output_text": "proficiency_confirmed",
-  "type": "tool_result"
-}
-```
-
-**Benefits:**
-- ✅ Full conversation traceability
-- ✅ Debug agent decision-making
-- ✅ Performance monitoring
-- ✅ User behavior analytics
-
-**Code Reference:** [`main.py:87-107`](main.py)
-
----
-
-### 7. 🔒 Built-in Tools - Code Execution ✅ IMPLEMENTED
-
-**Secure Sandboxed Python Code Execution**
-
-```python
-def execute_code(code: str, timeout_seconds: int = 5) -> dict:
-    """
-    Executes Python code in isolated subprocess with strict limits.
-    
-    Security Features:
-    - Memory limit: 128MB
-    - CPU time limit: 5 seconds  
-    - Process isolation via multiprocessing
-    - No file I/O, network, or dangerous imports
-    """
-```
-
-**Platform-Specific Handling:**
-```python
-# macOS/Linux: Use 'fork' for faster process creation
-if platform.system() in ['Darwin', 'Linux']:
-    multiprocessing.set_start_method('fork', force=True)
-# Windows: Use default 'spawn' method
-```
-
-**Resource Limits:**
-```python
-# Prevent memory exhaustion
-resource.setrlimit(resource.RLIMIT_AS, (128 * 1024 * 1024, 128 * 1024 * 1024))
-
-# Prevent infinite loops
-resource.setrlimit(resource.RLIMIT_CPU, (timeout_seconds, timeout_seconds))
-```
-
-**Usage in Code Assessment:**
 ```python
 # Phase 1: Store expected output
-run_code_assignment(
-    code="# Setup",
-    expected_output="600\n3600\n0\n0\n1000",
-    context=tool_context
-)
+context.set("expected_output", "600\n3600")
+context.set("problem_generated", True)
 
-# Phase 2: Evaluate user submission via code_evaluator_agent
-# Agent internally calls:
-result = run_code_assignment(
-    code=user_solution,
-    context=tool_context  # Uses stored expected output
-)
-# Returns: "pass" or "not pass"
+# Phase 2: Retrieve & validate
+stored = context.get("expected_output")
+return "pass" if actual == stored else "not pass"
 ```
 
-**Code Reference:** [`src/tools/code_sandbox.py`](src/tools/code_sandbox.py), [`src/tools/tools.py:144-250`](src/tools/tools.py)
+**Why This Matters:** Stateless LLM agents can't reliably remember exact outputs. ToolContext provides deterministic storage across agent turns, ensuring 100% evaluation accuracy.
+
+**Code:** [`src/tools/tools.py`](src/tools/tools.py)
+
+---
+
+### 6. 👁️ Observability
+
+**JSON Event Logging:** Every agent call, tool execution, and user interaction logged with timestamps for debugging and performance analysis.
+
+**Code:** [`main.py`](main.py)
+
+---
+
+### 7. 🔒 Secure Code Execution
+
+**Sandboxed Python runner** with process isolation, memory limits (128MB), timeout (5s), and forbidden keyword filtering. Platform-optimized for macOS/Linux/Windows.
+
+**Code:** [`src/tools/code_sandbox.py`](src/tools/code_sandbox.py)
 
 ---
 
@@ -376,27 +187,25 @@ See [`md_files/API_KEY_SETUP.md`](md_files/API_KEY_SETUP.md) for detailed instru
 
 ## 🏗️ Architecture
 
-### System Overview
-
 ```mermaid
 graph TB
-    UI[🖥️ Streamlit UI<br/>Session State Manager]
-    ORCH[🎯 Orchestrator<br/>LlmAgent<br/>Gemini 2.5 Flash Lite]
+    UI[🖥️ Streamlit UI]
+    ORCH[🎯 Orchestrator<br/>Gemini 2.5 Flash Lite]
     
-    subgraph "Specialized Agents (Sequential Flow)"
-        CV[📄 CV Analysis Agent<br/>Resume Parser]
-        JOB[🔍 Job Listing Agent<br/>SQLite Matcher]
-        PROB[📝 Problem Presenter Tool<br/>Hardcoded Templates]
-        CODE[💻 Code Evaluator Agent<br/>Sandbox Validator]
-        LANG[🌍 Language Assessment Agent<br/>Proficiency Tester]
-        SCHED[📅 Scheduler Agent<br/>Calendar Manager]
+    subgraph "Agent Pipeline"
+        CV[📄 CV Analysis]
+        JOB[🔍 Job Matching]
+        PROB[📝 Problem Presenter]
+        CODE[💻 Code Assessment]
+        LANG[🌍 Language Test]
+        SCHED[📅 Scheduler]
     end
     
-    subgraph "Custom Tools Layer"
-        CVTOOLS[📂 CV Tools<br/>read_cv, list_cvs, compare]
-        JOBDB[🗄️ Jobs Database<br/>SQLite]
-        SANDBOX[⚙️ Code Sandbox<br/>multiprocessing + limits]
-        GCAL[📆 Google Calendar API<br/>OAuth2 + REST]
+    subgraph "Tools Layer"
+        CVTOOLS[📂 CV Parser]
+        JOBDB[🗄️ SQLite]
+        SANDBOX[⚙️ Code Sandbox]
+        GCAL[📆 Calendar API]
     end
     
     UI <--> ORCH
@@ -406,157 +215,96 @@ graph TB
     ORCH --> CODE --> SANDBOX
     ORCH --> LANG
     ORCH --> SCHED --> GCAL
-    
-    style UI fill:#667eea,stroke:#333,stroke-width:2px,color:#fff
-    style ORCH fill:#764ba2,stroke:#333,stroke-width:3px,color:#fff
-    style SANDBOX fill:#f093fb,stroke:#333,stroke-width:2px
-    style GCAL fill:#34a853,stroke:#333,stroke-width:2px,color:#fff
 ```
 
 ### Workflow
 
 1. **Upload CV** → Streamlit saves to `temp_uploads/`
-2. **CV Analysis** → Custom tools parse PDF/TXT and extract skills
-3. **Job Matching** → SQLite database queries for relevant opportunities
-4. **Problem Presentation** → Hardcoded templates displayed via `problem_presenter_tool`
-5. **Expected Output Storage** → `code_execution_tool` stores answer key in ToolContext
-6. **Code Submission** → User provides solution with test cases
-7. **Code Evaluation** → `code_evaluator_agent` validates via secure sandbox
-8. **Language Test** → Agent validates proficiency in claimed languages
-9. **Interview Scheduling** → Google Calendar API books appointments
-
-### Key Components
-
-| Component | Purpose | Technologies | Status |
-|-----------|---------|--------------|--------|
-| **Streamlit UI** | Interactive frontend with session state | Streamlit, Custom CSS | ✅ Active |
-| **Orchestrator** | Central coordinator (LlmAgent) | Google ADK, Gemini 2.5 | ✅ Active |
-| **CV Analysis** | Resume parsing with custom tools | pdfplumber, PyPDF2 | ✅ Active |
-| **Job Matcher** | SQLite-based job recommendations | SQLite, Python | ✅ Active |
-| **Problem Presenter** | Hardcoded problem templates | Python dictionaries | ✅ Active |
-| **Code Evaluator** | Secure Python validation | multiprocessing, resource | ✅ Active |
-| **Language Test** | Proficiency validation | Gemini 2.5 | ✅ Active |
-| **Scheduler** | Google Calendar integration | OAuth2, Calendar API v3 | ✅ Active |
-| **Event Logger** | Full observability | JSON logging | ✅ Active |
+2. **Analysis** → Extract skills, experience, languages
+3. **Job Matching** → SQLite query for relevant positions
+4. **Code Challenge** → Pre-programmed problem from template library
+5. **Code Evaluation** → Sandbox execution with ToolContext validation
+6. **Language Test** → Multilingual proficiency assessment (if applicable)
+7. **Scheduling** → Google Calendar integration
 
 ---
 
 ## ✨ Features & Demo
 
-### Complete User Journey
+### Complete Journey
 
 ```
 📤 Upload CV (PDF/TXT)
     ↓
-🔍 AI Analysis
-    ├─ Technical Skills: Python, JavaScript, C++, SQL
-    ├─ Languages: English (Native), German (C2), Spanish (C1)  
-    ├─ Experience: 5 years as Software Engineer
-    └─ Education: BS Computer Science
+🔍 AI Analysis → Skills, languages, experience extraction
     ↓
-🎯 Job Matching
-    1. Senior Backend Engineer @ TechCorp
-    2. Full-Stack Developer @ Stripe
-    3. ML Engineer @ Meta
+🎯 Job Matching → SQLite database with relevant positions
     ↓
-💻 Code Assessment (Two-Phase Process)
-    ├─ Phase 1: Present hardcoded problem template
-    ├─ Phase 2: Store expected output in ToolContext
-    ├─ Phase 3: User submits solution
-    ├─ Sandbox: Secure execution with resource limits
-    ├─ Validation: code_evaluator_agent compares outputs
-    └─ Result: ✅ PASS (output matches expected)
+💻 Code Assessment
+    ├─ Pre-programmed problem (Backend/ML/Full-Stack)
+    ├─ Secure sandbox execution (128MB limit, 5s timeout)
+    └─ ToolContext validation → ✅ PASS or ❌ FAIL
     ↓
-🌍 Language Test
-    ├─ Test: German C2 proficiency
-    ├─ Prompt: Technical architecture question in German
-    └─ Result: ✅ proficiency_confirmed
+🌍 Language Test (if multilingual)
+    ├─ Generate proficiency test (B1-C2 levels)
+    └─ Evaluate response → ✅ proficiency_confirmed
     ↓
-📅 Interview Scheduling
-    ├─ Query: Available slots next week
-    ├─ Selection: Tuesday 2PM
-    └─ Booked: Google Calendar event created
+📅 Interview Scheduling → Google Calendar integration
 ```
 
 ### Sample Interaction
 
 **User:** "I'm not sure if I'm qualified for senior roles..."
 
-**AGERE CV Analysis:**
+**AGERE:** 
 ```
 ✅ Advanced Python (5 years)
 ✅ Led team of 5 engineers  
 ✅ Reduced latency by 40%
-✅ AWS Certified
+→ You ARE qualified for senior positions!
 ```
 
-**AGERE:** "You ARE qualified! Let me show you matching senior positions..."
-
-**User:** Selects "Senior Backend Engineer @ Meta"
-
-**AGERE Code Assessment:**
+**Code Assessment:**
 ```python
-Problem: Write a function that filters even numbers and converts 
-timestamps to Unix format.
-
-Your Solution:
-def process_data(data):
-    return [x for x in data if x['value'] >= 0]
-
+Problem: User Data Aggregation (Backend role)
+Solution: def sum_even_user_values(users): ...
 Result: ✅ PASS - All test cases passed!
 ```
 
-**AGERE Language Test (German C2):**
+**Language Test (German C2):**
 ```
-Prompt: "Beschreiben Sie, wie Sie die Herausforderungen bei der 
-Entwicklung skalierbarer Systeme bewältigen würden..."
-
-Your Response: "Die Entwicklung skalierbarer Systeme erfordert 
-ein tiefes Verständnis sowohl technischer als auch 
-organisatorischer Herausforderungen..."
-
+Prompt: "Beschreiben Sie eine komplexe Herausforderung..."
+Response: "In einem Projekt führte steigender Datenverkehr..."
 Result: ✅ proficiency_confirmed
 ```
 
-**AGERE:** "Perfect! You passed both assessments. Ready to schedule your interview?"
+**Outcome:** Interview scheduled via Google Calendar!
 
 ---
 
 ## 🔧 Technology Stack
 
-### Core Technologies
-
 | Category | Tools | Purpose |
 |----------|-------|---------|
-| **AI Framework** | Google ADK 0.1.0+ | Agent orchestration |
-| **LLM** | Gemini 2.5 Flash Lite | Natural language understanding |
-| **Frontend** | Streamlit 1.39+ | Interactive UI |
+| **AI** | Google ADK 0.1.0+, Gemini 2.5 Flash Lite | Agent orchestration & LLM |
+| **Frontend** | Streamlit 1.39+ | Interactive UI with session state |
 | **Backend** | Python 3.10+ | Application logic |
-| **PDF Processing** | pdfplumber, PyPDF2 | Resume parsing |
-| **Code Execution** | multiprocessing, resource | Secure sandbox |
-| **Calendar API** | Google Calendar API v3 | Interview scheduling |
-| **Database** | SQLite | Job listings storage |
-| **Logging** | JSON file logging | Observability |
+| **Processing** | pdfplumber, PyPDF2 | CV parsing |
+| **Security** | multiprocessing, resource | Code sandbox |
+| **Integration** | Google Calendar API v3, OAuth2 | Interview scheduling |
+| **Database** | SQLite | Job listings |
+| **Logging** | JSON | Event tracking |
 
 ### Key Dependencies
 
 ```python
-streamlit>=1.39.0          # Web UI
-google-adk>=0.1.0          # Agent framework  
-pdfplumber>=0.11.0         # PDF parsing
-google-auth>=2.0.0         # OAuth2
-google-api-python-client   # Calendar API
-python-dotenv>=1.0.0       # Environment config
+streamlit>=1.39.0
+google-adk>=0.1.0
+pdfplumber>=0.11.0
+google-auth>=2.0.0
+google-api-python-client
+python-dotenv>=1.0.0
 ```
-
-### Architecture Patterns
-
-- **Hierarchical Multi-Agent** - Central orchestrator with specialized sub-agents
-- **Custom Tools** - FunctionTool wrappers for domain-specific operations
-- **Secure Sandbox** - Process isolation for code execution
-- **Session State** - Streamlit-based conversation memory
-- **Event Logging** - JSON-based observability
-- **OAuth2 Integration** - Secure Google Calendar access
 
 ---
 
@@ -564,39 +312,46 @@ python-dotenv>=1.0.0       # Environment config
 
 ```
 capstone-project-google-kaggle/
-├── main.py                    # 🚀 Streamlit entry point
-├── requirements.txt           # 📦 Dependencies
-├── .env                       # 🔐 Environment variables
-├── env.example                # 📝 Config template
+├── main.py                    # Streamlit entry point
+├── requirements.txt           # Dependencies
+├── .env                       # Environment config
 │
 ├── src/
 │   ├── agents/
-│   │   └── agents.py          # 🤖 All agent definitions
+│   │   └── agents.py          # All agent definitions
 │   ├── tools/
-│   │   ├── tools.py           # 🔧 Custom ADK tools
-│   │   └── code_sandbox.py    # 🔒 Secure code execution
+│   │   ├── tools.py           # Custom ADK tools
+│   │   └── code_sandbox.py    # Secure code execution
 │   └── styles/
-│       └── custom.css         # 🎨 UI styling
+│       └── custom.css         # UI styling
 │
 ├── jobs/
-│   ├── jobs.db                # 🗄️ SQLite job database
+│   ├── jobs.db                # SQLite job database
 │   └── jobs_db.py             # Database management
 │
 ├── log_files/
-│   └── runner_events.log      # 📊 Event logging (JSON)
+│   └── runner_events.log      # JSON event logging
 │
 ├── dummy_files_for_testing/
-│   ├── cv_john_doe.pdf        # 🧪 Test CV 1
-│   └── cv_maria_santos.pdf    # 🧪 Test CV 2
+│   ├── cv_john_doe.pdf        # Test CV samples
+│   └── cv_maria_santos.pdf
 │
-├── temp_uploads/              # 📤 User CV uploads
-│
-└── md_files/                  # 📚 Extended documentation
-    ├── API_KEY_SETUP.md
-    ├── ARCHITECTURE.md
-    ├── QUICK_START.md
-    └── ...                    # 20+ documentation files
+└── temp_uploads/              # User CV uploads
 ```
+
+---
+
+## 🚀 Status
+
+✅ **All core features working**
+- CV Analysis with skill extraction
+- Job matching via SQLite
+- Secure code assessment with pre-programmed problems
+- Language proficiency testing (multilingual support)
+- ToolContext-based output validation
+- Comprehensive logging & observability
+
+⚠️ **Calendar API** requires OAuth setup (optional feature)
 
 ---
 
@@ -641,27 +396,19 @@ Built for the **Kaggle x Google Agents Intensive Hackathon** by:
 
 ## 🤝 Contributing
 
-We welcome contributions! See our [Contributing Guide](#) for:
-- Code style guidelines
-- How to submit PRs
-- Areas where we need help
-- Development setup
-
 **Priority Areas:**
 - [ ] Vector database integration (FAISS/ChromaDB)
-- [ ] A2A Protocol implementation
 - [ ] Agent evaluation framework
 - [ ] Docker containerization
 - [ ] Comprehensive test suite
 
 ---
 
-## ⭐ Support the Project
+## ⭐ Support
 
-- ⭐ **Star us on GitHub**
+- ⭐ **Star on GitHub**
 - 🐦 **Share on social media**
 - 🐛 **Report bugs or suggest features**
-- 🤝 **Contribute code or documentation**
 
 ---
 
