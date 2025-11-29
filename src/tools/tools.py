@@ -1,5 +1,6 @@
 # CUSTOM TOOLS FOR AGENTS 🔧
-
+from dotenv import load_dotenv
+load_dotenv()
 from pathlib import Path
 from typing import Dict, Union, Optional, Any
 from google.genai import types
@@ -12,8 +13,6 @@ from dateutil import parser
 import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from dotenv import load_dotenv
-load_dotenv()
 import os
 
 # Try to import Context - if not available, we'll work without it

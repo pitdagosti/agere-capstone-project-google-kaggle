@@ -1,5 +1,7 @@
 # AGENTS FILE 🧑‍🏭
 
+from dotenv import load_dotenv
+load_dotenv()
 # Packages Import
 from google.adk.agents import Agent, LlmAgent
 from google.adk.tools import google_search, AgentTool, FunctionTool
@@ -8,8 +10,7 @@ from google.adk.models.google_llm import Gemini
 from src.tools.code_sandbox import execute_code
 from google.adk.runners import InMemoryRunner
 from pathlib import Path
-from dotenv import load_dotenv
-load_dotenv()
+
 
 
 from src.tools import (
