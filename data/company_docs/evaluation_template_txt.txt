@@ -1,0 +1,184 @@
+PROLOGWARE SOLUTIONS - CANDIDATE EVALUATION FORM
+=================================================
+
+CANDIDATE INFORMATION
+=====================
+Name: _______________________________________
+Position Applied: ___________________________
+Date of Interview: __________________________
+Interviewer Name: ___________________________
+Interview Stage: ____________________________
+
+=================================================
+SCORING SECTIONS
+=================================================
+
+TECHNICAL SKILLS
+(Weight varies by role - see job description)
+
+Coding/Technical Proficiency: _____ / _____
+Framework/Tool Knowledge: _____ / _____
+Problem-Solving Ability: _____ / _____
+System Architecture/Design: _____ / _____
+
+Technical Skills Subtotal: _____ / _____
+
+Comments:
+_________________________________________________
+_________________________________________________
+_________________________________________________
+
+=================================================
+
+EXPERIENCE & PORTFOLIO
+(Weight varies by role)
+
+Relevant Projects/Portfolio Quality: _____ / _____
+Years of Experience: _____ / _____
+Variety of Work: _____ / _____
+Industry Knowledge: _____ / _____
+
+Experience Subtotal: _____ / _____
+
+Comments:
+_________________________________________________
+_________________________________________________
+_________________________________________________
+
+=================================================
+
+COMMUNICATION SKILLS
+(Weight varies by role)
+
+Clarity of Explanations: _____ / _____
+Language Proficiency: _____ / _____
+Client/Team Interaction: _____ / _____
+Presentation Skills: _____ / _____
+
+Communication Subtotal: _____ / _____
+
+Comments:
+_________________________________________________
+_________________________________________________
+_________________________________________________
+
+=================================================
+
+CULTURAL FIT & SOFT SKILLS
+(Weight varies by role)
+
+Alignment with Startup Culture: _____ / _____
+Community-Minded Attitude: _____ / _____
+Learning Mindset: _____ / _____
+Enthusiasm & Energy: _____ / _____
+Collaboration & Teamwork: _____ / _____
+
+Cultural Fit Subtotal: _____ / _____
+
+Comments:
+_________________________________________________
+_________________________________________________
+_________________________________________________
+
+=================================================
+
+ADDITIONAL ASSESSMENT
+(For specific roles)
+
+Innovation & Creativity: _____ / _____
+Consulting/Strategic Thinking: _____ / _____
+Leadership Potential: _____ / _____
+Organizational Skills: _____ / _____
+
+Additional Subtotal: _____ / _____
+
+Comments:
+_________________________________________________
+_________________________________________________
+_________________________________________________
+
+=================================================
+FINAL SCORING
+=================================================
+
+TOTAL SCORE: _____ / 100
+
+RATING:
+[ ] 90-100: Exceptional - Hire Immediately
+[ ] 80-89: Strong Candidate - Highly Recommended
+[ ] 70-79: Good Fit - Recommended
+[ ] 60-69: Meets Minimum Requirements
+[ ] 0-59: Does Not Meet Requirements
+
+MINIMUM PASSING SCORE FOR ROLE: _____
+
+=================================================
+RED FLAGS OBSERVED
+=================================================
+
+[ ] Poor communication or unprofessional behavior
+[ ] Misrepresentation of skills or experience
+[ ] Negative attitude toward learning or feedback
+[ ] Lack of interest in community or mission
+[ ] Unavailability for required collaboration times
+[ ] Other: ____________________________________
+
+=================================================
+GREEN FLAGS OBSERVED
+=================================================
+
+[ ] Strong portfolio demonstrating relevant skills
+[ ] Proactive communication and follow-up
+[ ] Genuine enthusiasm for the role and company
+[ ] Growth mindset and willingness to learn
+[ ] Community contributions or open-source work
+[ ] Other: ____________________________________
+
+=================================================
+RECOMMENDATION
+=================================================
+
+[ ] STRONG YES - Proceed to next stage immediately
+[ ] YES - Proceed to next stage
+[ ] MAYBE - Discuss with team before proceeding
+[ ] NO - Do not proceed
+
+Recommended Next Steps:
+_________________________________________________
+_________________________________________________
+_________________________________________________
+
+=================================================
+INTERVIEWER NOTES & COMMENTS
+=================================================
+
+Strengths:
+_________________________________________________
+_________________________________________________
+_________________________________________________
+
+Areas of Concern:
+_________________________________________________
+_________________________________________________
+_________________________________________________
+
+Additional Observations:
+_________________________________________________
+_________________________________________________
+_________________________________________________
+
+Salary Expectations: ____________________________
+Start Date Availability: ________________________
+Special Considerations: __________________________
+_________________________________________________
+
+=================================================
+
+Interviewer Signature: __________________________
+Date: __________________________________________
+
+=================================================
+Document Version: 1.0
+Last Updated: November 2025
+For Internal Use - HR & Recruitment
+=================================================
