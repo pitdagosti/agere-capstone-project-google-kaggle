@@ -20,6 +20,7 @@ from src.tools import (
     calendar_get_busy,
     calendar_book_slot,
     code_execution_tool,
+    problem_presenter_tool,
 )
 
 # Load environment variables
@@ -27,6 +28,159 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
+
+
+# ============================================================================
+# PRE-PROGRAMMED CODING PROBLEMS
+# ============================================================================
+
+def get_coding_problem(job_title: str = "default") -> dict:
+    """
+    Returns a pre-programmed coding problem based on job category.
+    These are simple, well-tested problems that work in the sandbox.
+    
+    Args:
+        job_title: The job title to determine which problem to use
+        
+    Returns:
+        dict with 'title', 'description', 'test_code', 'expected_output'
+    """
+    
+    # Handle None, empty, or non-string job_title
+    if not job_title or not isinstance(job_title, str):
+        job_title = "default"
+    
+    # Normalize job title for matching
+    job_lower = job_title.lower()
+    
+    # Computer Vision / Image Processing Problems (check FIRST - most specific)
+    if any(word in job_lower for word in ['vision', 'computer vision', 'image', 'cv']):
+        return {
+            'title': 'Image Feature Extractor',
+            'description': '''Write a function `extract_features(image_data)` that processes 2D image data.
+image_data is a list of lists of pixel intensity values (0-255).
+Return the top 3 most frequent pixel values in descending order of frequency.
+If fewer than 3 unique values, return all of them.
+If empty, return empty list.''',
+            'test_code': '''# Test Case 1
+image1 = [[10, 20, 10], [30, 10, 20]]
+print(extract_features(image1))
+
+# Test Case 2
+image2 = [[5, 5, 5], [5, 10, 15]]
+print(extract_features(image2))
+
+# Test Case 3
+image3 = []
+print(extract_features(image3))
+
+# Test Case 4
+image4 = [[7]]
+print(extract_features(image4))''',
+            'expected_output': '[10, 20, 30]\n[5, 10, 15]\n[]\n[7]'
+        }
+    
+    # Backend / API / Microservices Problems
+    elif any(word in job_lower for word in ['backend', 'api', 'microservice']):
+        return {
+            'title': 'User Data Aggregation',
+            'description': '''Write a function `sum_even_user_values(users)` that takes a list of dictionaries. 
+Each dictionary has 'id' and 'value' keys. Sum the 'value' for users with even 'id'. 
+If the sum exceeds 1000, return double the sum. Otherwise, return the sum as is.''',
+            'test_code': '''# Test Case 1: Basic test
+users1 = [{'id': 1, 'value': 100}, {'id': 2, 'value': 200}, {'id': 3, 'value': 300}, {'id': 4, 'value': 400}]
+print(sum_even_user_values(users1))
+
+# Test Case 2: Sum exceeds 1000
+users2 = [{'id': 2, 'value': 500}, {'id': 4, 'value': 600}, {'id': 6, 'value': 700}]
+print(sum_even_user_values(users2))
+
+# Test Case 3: No even IDs
+users3 = [{'id': 1, 'value': 100}, {'id': 3, 'value': 300}, {'id': 5, 'value': 500}]
+print(sum_even_user_values(users3))
+
+# Test Case 4: Empty list
+users4 = []
+print(sum_even_user_values(users4))
+
+# Test Case 5: Sum equals 1000
+users5 = [{'id': 2, 'value': 500}, {'id': 3, 'value': 100}, {'id': 4, 'value': 500}]
+print(sum_even_user_values(users5))''',
+            'expected_output': '600\n3600\n0\n0\n1000'
+        }
+    
+    # Data Science / NLP / ML Problems
+    elif any(word in job_lower for word in ['data', 'scientist', 'nlp', 'machine learning', 'ml ']):
+        return {
+            'title': 'Text Sentiment Analyzer',
+            'description': '''Write a function `analyze_sentiment(text_list)` that takes a list of strings.
+For each text, determine sentiment: 'positive', 'negative', or 'neutral'.
+- Contains 'good', 'great', 'excellent', 'love' → 'positive'
+- Contains 'bad', 'terrible', 'awful', 'hate' → 'negative'
+- Negative keywords take precedence if both present
+- Otherwise → 'neutral'
+Return a list of sentiment labels.''',
+            'test_code': '''# Test Case 1
+print(analyze_sentiment(["This is good", "I hate this", "It was excellent", "The weather"]))
+
+# Test Case 2
+print(analyze_sentiment([]))
+
+# Test Case 3
+print(analyze_sentiment(["This is not good, but it's bad"]))
+
+# Test Case 4
+print(analyze_sentiment(["Love the product!", "Terrible service"]))''',
+            'expected_output': "['positive', 'negative', 'positive', 'neutral']\n[]\n['negative']\n['positive', 'negative']"
+        }
+    
+    # Full-Stack / Frontend / General Developer Problems
+    elif any(word in job_lower for word in ['full', 'stack', 'frontend', 'developer', 'software', 'engineer']):
+        return {
+            'title': 'Transaction Balance Calculator',
+            'description': '''Write a function `calculate_balance(transactions)` that takes a list of transaction dictionaries.
+Each has 'type' ('deposit' or 'withdrawal') and 'amount' keys.
+Return the final balance: add deposits, subtract withdrawals.
+Start from balance 0.''',
+            'test_code': '''# Test Case 1
+trans1 = [{'type': 'deposit', 'amount': 100}, {'type': 'withdrawal', 'amount': 30}]
+print(calculate_balance(trans1))
+
+# Test Case 2
+trans2 = []
+print(calculate_balance(trans2))
+
+# Test Case 3
+trans3 = [{'type': 'withdrawal', 'amount': 50}]
+print(calculate_balance(trans3))
+
+# Test Case 4
+trans4 = [{'type': 'deposit', 'amount': 200}, {'type': 'deposit', 'amount': 150}, {'type': 'withdrawal', 'amount': 100}]
+print(calculate_balance(trans4))''',
+            'expected_output': '70\n0\n-50\n250'
+        }
+    
+    # Default problem for any other job
+    else:
+        return {
+            'title': 'List Statistics Calculator',
+            'description': '''Write a function `calculate_stats(numbers)` that takes a list of numbers.
+Return a dictionary with: 'sum', 'average', 'min', 'max'.
+If list is empty, return all values as 0.
+Round average to 2 decimal places.''',
+            'test_code': '''# Test Case 1
+print(calculate_stats([10, 20, 30, 40]))
+
+# Test Case 2
+print(calculate_stats([]))
+
+# Test Case 3
+print(calculate_stats([5]))
+
+# Test Case 4
+print(calculate_stats([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))''',
+            'expected_output': "{'sum': 100, 'average': 25.0, 'min': 10, 'max': 40}\n{'sum': 0, 'average': 0, 'min': 0, 'max': 0}\n{'sum': 5, 'average': 5.0, 'min': 5, 'max': 5}\n{'sum': 55, 'average': 5.5, 'min': 1, 'max': 10}"
+        }
 
 print("✅ ADK components imported successfully.")
 print("✅ ADK will auto-initialize client from environment variables")
@@ -130,8 +284,8 @@ job_listing_agent = Agent(
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
     description="Agent Assistant that lists job opportunities from the SQLite database and matches candidate skills.",
     instruction="""
-    Agent Assistant that provides job listings to candidates.
-    Use the job_listing_tool to fetch jobs from the local SQLite database.
+    Agent Assistant that MUST PROVIDE job listings to candidates.
+    Use the 'job_listing_tool' to fetch jobs from the local SQLite database.
     Always expect to receive a string of skills in 'cv_summary' input to match jobs.
     If cv_summary is empty, fetch jobs without filtering.
     """,
@@ -151,108 +305,38 @@ print("✅ job_listing_agent defined.")
 code_assessment_agent = Agent(
     name="code_assessment_agent",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
-    description="""
-        Professional coding interviewer assistant. Generates a single, simple code exercise,
-        executes the submitted solution in a sandbox, and provides a 'pass' or 'not pass' evaluation.
-        """,
-    instruction="""
-    You are an expert coding assessment agent. You have two distinct modes of operation.
+    description="Executes candidate code and returns pass/not pass",
+    instruction="""You have ONE job: execute code using code_execution_tool.
 
-    **MODE 1: Assignment Generation**
-    - This is your creative task. You will be asked to create an assignment for a specific job role.
-    - **Assignment Generation Rules:**
-      1. You MUST generate **one single, self-contained coding problem**. Not a multi-step quiz.
-      2. The problem MUST be **simple and solvable in a few lines of code**. Avoid complex projects like building a full API.
-      3. **CRITICAL - TEST CASES**: You MUST provide test cases AT THE END of the problem. The candidate should include these test cases in their submission, which will print the expected output.
-      4. **CRITICAL**: The code will run in a RESTRICTED SANDBOX. You CANNOT use: import, os, sys, subprocess, open, input, eval, exec.
-         Only use BUILT-IN Python functions: print, range, len, sum, min, max, abs, round, int, str, list, dict, tuple, set, float, bool, sorted, enumerate, zip.
-      5. **CRITICAL - EXPECTED OUTPUT FORMAT**: When showing test cases, you MUST explicitly state the expected output line by line.
-      6. **GOOD EXAMPLE:** 
-         "Write a Python function `sum_even(numbers)` that returns the sum of all even integers in the list.
-         
-         Test your function with these cases:
-         ```python
-         print(sum_even([1, 2, 3, 4, 5, 6]))  # Expected: 12
-         print(sum_even([10, 15, 20]))  # Expected: 30
-         ```
-         
-         **Expected Output:**
-         ```
-         12
-         30
-         ```"
-      7. **GOOD EXAMPLE:** "Write a function `max_nested(lst)` that finds the maximum value in a nested list structure.
-         
-         Test your function:
-         ```python
-         print(max_nested([[1, 2], [3, 4, 5]]))  # Expected: 5
-         ```
-         
-         **Expected Output:**
-         ```
-         5
-         ```"
-      8. **BAD EXAMPLE:** "Build a complete REST API for a product catalog." (too complex)
-      9. **BAD EXAMPLE:** "Use OpenCV to convert an image to grayscale." (requires import)
-      10. **BAD EXAMPLE:** A problem without test cases that print expected output.
-      11. **BAD EXAMPLE:** A problem without an "Expected Output" section.
-    
-    - **CRITICAL - TWO-STEP PROCESS:**
-      STEP A: First, generate the problem text with test cases and expected output as shown above.
-      STEP B: In the SAME response, immediately call the `run_code_assignment` tool to store the expected output:
-              Example: If expected output is "12\n30", call:
-              `run_code_assignment(code="", expected_output="12\n30")`
-              
-      **YOU MUST DO BOTH STEPS IN ONE RESPONSE!**
-      
-    - After generating the problem AND storing the expected output, include this exact warning:
-      
-      **CONSTRAINTS:**
-      - DO NOT use any import statements (no libraries allowed)
-      - Only use Python built-in functions: print, range, len, sum, min, max, abs, round, int, str, list, dict, tuple, set, float, bool, sorted, enumerate, zip
-      - Your code will run in a restricted sandbox environment
-      
-      **IMPORTANT:**
-      - Include the test cases at the end of your code
-      - The test cases will print the expected output
-      - Make sure to define your function AND call it with the test cases
-      
-    - Then ask the user to submit their complete code (function + test cases).
+**MANDATORY PROCESS:**
+1. User gives you code
+2. You MUST call: code_execution_tool(code="<exact code string>")
+3. Read tool response
+4. If contains "✅ PASS" → respond ONLY: `pass`
+5. If contains "❌" → respond ONLY: `not pass`
 
-    **MODE 2: Strict Evaluation with Output Comparison**
-    - This happens when the user provides code. Your task is to evaluate it using a strict, deterministic process.
-    - **PROCESS:**
-      1. Take the user's code.
-      2. You **MUST** use the `run_code_assignment` tool to execute it (pass only the code).
-      3. The tool will return execution results.
-      4. **CRITICAL - EXTRACT EXPECTED OUTPUT:**
-         a. Look back at the problem you generated (it's in your conversation history, just a few messages up).
-         b. Find the section labeled "**Expected Output:**"
-         c. Extract the exact text between the code fences after that heading.
-         d. This is what the user's code should produce.
-      5. **COMPARISON LOGIC:**
-         - If tool result starts with "❌" (execution error) → Response: `not pass`
-         - If tool result starts with "✅ PASS" (Context comparison worked) → Response: `pass`
-         - If tool result starts with "✅ Code executed successfully":
-           * Extract actual output (after "Output:")
-           * Compare line-by-line with expected output from step 4
-           * Ignore leading/trailing whitespace on each line
-           * If they match → Response: `pass`
-           * If they don't match OR output is empty → Response: `not pass`
-      6. **Examples:**
-         - Expected from problem: "5\n5\n1\n0"
-         - Tool returns: "✅ Code executed successfully!\nOutput:\n5\n5\n1\n0" → `pass` ✅
-         - Tool returns: "✅ Code executed successfully!\nOutput:\n5\n4\n1\n0" → `not pass` ❌ (line 2 wrong)
-         - Tool returns: "✅ Code executed successfully!\nOutput:\n" → `not pass` ❌ (empty)
-         - Tool returns: "❌ Execution Error: ..." → `not pass` ❌
+**FORBIDDEN:**
+- DO NOT analyze code manually
+- DO NOT respond without calling tool
+- DO NOT skip execution
 
-    **ABSOLUTE RULES FOR EVALUATION:**
-    - Extract expected output from YOUR OWN previous message (the problem you generated)
-    - Compare actual output line-by-line (after stripping whitespace)
-    - Be precise: "5" ≠ "5.0" (unless problem allows it)
-    - Your final output MUST BE either `pass` or `not pass`. No other words or explanations.
-    """,
+**Example:**
+User: "def add(a,b): return a+b\nprint(add(1,2))"
+You: code_execution_tool(code="def add(a,b): return a+b\nprint(add(1,2))")
+Tool: "✅ PASS: Output matches!"
+You: pass""",
     tools=[code_execution_tool]
+)
+
+# Problem Presenter Agent (Shows pre-programmed problems)
+problem_presenter_agent = Agent(
+    name="problem_presenter_agent",
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
+    description="Presents coding problems using the problem_presenter_tool",
+    instruction="""Call problem_presenter_tool(job_title="<job title>") and return its complete output.
+
+DO NOT add commentary. Just call the tool and show its output.""",
+    tools=[problem_presenter_tool]
 )
 
 # Language Assessment Agent
@@ -366,7 +450,7 @@ orchestrator = LlmAgent(
 You are a job applicant assistant orchestrator. Coordinate a team of specialized agents to help 
 candidates find their ideal job match. You MUST delegate tasks to your sub-agents.
 
-WORKFLOW AUTOMATICO:
+WORKFLOW, MANDATORY TO FOLLOW STRICTLY:
 
 1. STEP 1: CV Analysis
    - When a user uploads a CV, DELEGATE to 'CV_analysis_agent'.
@@ -399,31 +483,26 @@ WORKFLOW AUTOMATICO:
 3. STEP 3: Code Assessment (TWO-PHASE PROCESS)
    - **MANDATORY**: ALL software/engineering jobs require a code assessment. Do NOT skip this step.
    
-   **PHASE 1: Generate Assessment Problem**
-   - After user selects a job number, IMMEDIATELY call 'code_assessment_agent'.
-   - **CRITICAL REQUEST FORMAT**: Your request MUST clearly ask to GENERATE a problem:
-     Example: "Generate a code assessment problem for [Job Title] role. Required skills: [skills list]."
-     DO NOT say: "Evaluate candidate for..." (that's Phase 2!)
-   - The agent will return a complete problem statement with:
-     * Problem description
-     * Test cases
-     * Expected output
-     * Constraints
-   - **CRITICAL**: You MUST display the FULL assessment details to the user.
-     Do NOT summarize or paraphrase. Show the complete problem statement, requirements, examples, and instructions.
+   **PHASE 1: Present Pre-Programmed Problem**
+   - After user selects a job number, call 'problem_presenter_tool' DIRECTLY with the job title string.
+   - Example: problem_presenter_tool(job_title="Machine Learning Engineer – Computer Vision Focus")
+   - The tool will return the complete problem with test cases and constraints.
+   - **CRITICAL**: Display the FULL problem to the user exactly as the tool returns it.
    - Wait for the candidate to provide their solution in the chat window.
    
-   **PHASE 2: Evaluate Submission**
-   - Once code is submitted, call 'code_assessment_agent' again to evaluate it.
-   - **CRITICAL REQUEST FORMAT**: Pass the user's code EXACTLY as they submitted it.
-     Example request: "[paste exact code here]"
-     DO NOT add extra text like "Evaluate this code:" or "Check correctness:"
-     Just send the raw code!
-   - The agent will:
-     * Execute the code in sandbox
-     * Compare output vs expected
-     * Return either 'pass' or 'not pass'
-   - **Store the assessment result** (pass/not pass) for the scheduling step.
+   **PHASE 2: Evaluate Submission**  
+   - When user submits code, IMMEDIATELY call code_assessment_agent.
+   - Pass the code EXACTLY as submitted, with NO other text.
+   - DO NOT say "I'll evaluate this" or "Please execute" - JUST CALL THE AGENT.
+   - Wait for agent response: 'pass' or 'not pass'.
+   - Store result for scheduling.
+   
+   **Example flow:**
+   User: [submits code]
+   You: code_assessment_agent(code="[exact code user submitted]")
+   Agent: "pass"
+   You: "Great! Your code passed the assessment." 
+   THEN MOVE TO STEP 4: LANGUAGE ASSESSMENT, YOU MUST DO THAT AFTER THE CODE ASSESSMENT PASSED.
 
 4. STEP 4: Language Assessment (MANDATORY for multilingual candidates)
    - **CRITICAL**: After code assessment passes, you MUST check the CV analysis from STEP 1.
@@ -431,17 +510,31 @@ WORKFLOW AUTOMATICO:
       * If CV shows ANY language OTHER THAN English (with proficiency level like B1, B2, C1, C2, Native, Fluent) → Language assessment is REQUIRED
       * Examples that TRIGGER assessment: "Spanish: Fluent", "German: C2", "Portuguese: Native", "French: B1"
       * English-only candidates → Skip language assessment
-   - **PROCESS:**
-      1. Identify the highest proficiency non-English language from CV
-      2. Call 'language_assessment_agent' with: 
-         - Candidate CV information (including language section)
-         - Selected job details
-         - Instruction: "Test proficiency in [language] at [level]"
-      3. Display the language test to the user
-      4. Wait for candidate's response in the tested language
-      5. Call 'language_assessment_agent' again to evaluate the response
-      6. Display evaluation result: `proficiency_confirmed` or `proficiency_needs_improvement`
-   - **Note**: Language assessment result is informational and does NOT block scheduling.
+   
+   - **TWO-PHASE PROCESS (both phases mandatory):**
+   
+   **PHASE 1: Generate Language Test**
+   1. Identify the highest proficiency non-English language from CV
+   2. IMMEDIATELY call 'language_assessment_agent' with:
+      "Generate a language test for candidate [Name]. CV Languages: [full language list]. Selected job: [Job Title]. Test [Language] at [Level] level."
+   3. Display the FULL language test to the user
+   4. Wait for candidate's response in the tested language
+   
+   **PHASE 2: Evaluate Response (DO NOT SKIP THIS!)**
+   5. When user submits language response, you MUST call language_assessment_agent IMMEDIATELY.
+   6. Format: "Evaluate this [Language] response at [Level] level: [user's text]"
+   7. DO NOT paraphrase or summarize the user's response - pass it EXACTLY as written.
+   8. Display the agent's evaluation result to the user.
+   9. Then proceed to STEP 5 (scheduling) regardless of language result.
+   
+   **EXAMPLE OF PHASE 2:**
+   User submits: "Hola, trabajé en..."
+   You MUST call: language_assessment_agent("Evaluate this Spanish response at C1 level: Hola, trabajé en...")
+   Agent returns: "Your Spanish demonstrates C1 proficiency. proficiency_confirmed"
+   You display: [agent's evaluation]
+   Then: Proceed to STEP 5
+   
+   **CRITICAL**: Do NOT skip calling the agent for evaluation! Do NOT just say "proficiency confirmed" without calling the agent!
 
 5. STEP 5: Schedule Live Interview
    - **CRITICAL**: Only proceed to scheduling if STEP 3 (code assessment) returned 'pass'.
@@ -471,6 +564,7 @@ CRITICAL RULES:
     tools=[
         AgentTool(CV_analysis_agent),
         AgentTool(job_listing_agent),
+        problem_presenter_tool,  # Direct tool call instead of agent
         AgentTool(code_assessment_agent),
         AgentTool(language_assessment_agent),
         AgentTool(scheduler_agent),
