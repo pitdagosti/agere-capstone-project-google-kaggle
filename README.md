@@ -280,55 +280,21 @@ User → Upload CV → temp_uploads/
 
 ```
 capstone-project-google-kaggle/
-├── main.py                          # 🚀 Streamlit UI entry point
-├── requirements.txt                 # 📦 Python dependencies
-├── .env                             # 🔐 Environment variables (gitignored)
-├── env.example                      # 📝 Environment template
-├── README.md                        # 📖 Project documentation
-├── LICENSE                          # ⚖️ CC BY-SA 4.0
-├── __init__.py                      # 📦 Package initialization
+├── main.py                    # Streamlit App
+├── requirements.txt
+├── .env / env.example
+├── README.md
 │
-├── src/                             # 📂 Source code
-│   ├── agents/                      # 🤖 Agent definitions
-│   │   ├── __init__.py              # Export orchestrator and agents
-│   │   └── agents.py                # Orchestrator, CV, Job, Recruiter agents
-│   │
-│   ├── tools/                       # 🔧 Custom tools & utilities
-│   │   ├── __init__.py              # Export CV tools
-│   │   ├── tools.py                 # read_cv, list_cvs, compare_candidates
-│   │   ├── code_sandbox.py          # 🔒 Secure code execution sandbox
-│   │   └── mcp_client.py            # 📅 Calendar REST API client
-│   │
-│   └── styles/                      # 🎨 UI styling
-│       ├── __init__.py
-│       └── custom.css               # Streamlit custom CSS
+├── src/
+│   ├── agents/
+│   │   └── agents.py          # Orchestrator + Specialized Agents
+│   ├── tools/
+│   │   ├── tools.py           # CV operations
+│   │   ├── code_sandbox.py    # Sandboxed execution
+│   │ 
+│   └── styles/custom.css
 │
-├── mcp_server/                      # 🔌 Model Context Protocol server
-│   ├── __init__.py
-│   ├── calendar_server.py           # Flask API for Google Calendar
-│   └── calendar.db                  # 🗄️ SQLite database (generated)
-│
-├── test_debug_notebooks/            # 🧪 Jupyter development notebooks
-│   ├── main.ipynb                   # Main workflow testing
-│   ├── test_debug_agents.ipynb      # Agent testing & debugging
-│   └── test_debug_tools.ipynb       # Tool testing & validation
-│
-├── md_files/                        # 📚 Extended documentation
-│   ├── API_KEY_SETUP.md
-│   ├── ARCHITECTURE.md
-│   ├── QUICK_START.md
-│   ├── SETUP_NOW.md
-│   ├── TROUBLESHOOTING_API_KEY.md
-│   └── ...                          # 20+ documentation files
-│
-├── dummy_files_for_testing/         # 🧪 Test data
-│   ├── cv_john_doe.txt              # Sample CV 1 (TXT)
-│   ├── cv_john_doe.pdf              # Sample CV 1 (PDF)
-│   ├── cv_maria_santos.txt          # Sample CV 2 (TXT)
-│   └── cv_maria_santos.pdf          # Sample CV 2 (PDF)
-│
-└── temp_uploads/                    # 📤 Runtime file storage
-    └── *.pdf, *.txt                 # User-uploaded CVs (auto-cleaned)
+└── temp_uploads/
 ```
 
 ### File Descriptions
