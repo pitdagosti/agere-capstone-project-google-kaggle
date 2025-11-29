@@ -98,7 +98,7 @@ def execute_code(code_string: str, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> di
     
     # 1. Improved Security Scan (static check for obvious malicious keywords)
     # This is a fast-path rejection. The primary security comes from the restricted __builtins__.
-    forbidden_keywords = ["import", "os", "sys", "subprocess", "open", "input", "eval", "exec"]
+    forbidden_keywords = ["import", "os", "sys", "subprocess", "open", "input", "eval", "exec", "compile", "__"]
     # Use regex to find whole words to avoid false positives on variable names
     for keyword in forbidden_keywords:
         if re.search(r'\b' + keyword + r'\b', code_string):

@@ -145,7 +145,7 @@ def calendar_book_slot_fn(start: str, end: str, summary: str = "Interview", atte
 
 
 
-def run_code_assignment(code: str, expected_output: str = None, context: Any = None) -> str:
+def run_code_assignment(code: str, expected_output: str = None, context: Optional[object] = None) -> str:
     """
     Executes the candidate's code submission in a secure sandbox environment.
     This tool is used by the code_assessment_agent to evaluate solutions.
@@ -223,13 +223,14 @@ def run_code_assignment(code: str, expected_output: str = None, context: Any = N
     return feedback
 
 
-def present_coding_problem_fn(job_title: str = "default") -> str:
+def present_coding_problem_fn(job_title: str = "default", context: Optional[object] = None) -> str:
     """
     Present a coding problem from templates based on job category.
     Automatically stores expected output for later evaluation.
     
     Args:
         job_title: The job title to determine appropriate problem
+        context: ToolContext for storing expected output
         
     Returns:
         Formatted problem statement with test cases and instructions
@@ -239,6 +240,11 @@ def present_coding_problem_fn(job_title: str = "default") -> str:
     
     # Get the appropriate problem
     problem = get_coding_problem(job_title)
+    
+    # Store the expected output in context for later comparison
+    if context:
+        context.set("last_expected_output", problem['expected_output'])
+        context.set("problem_generated", True)
     
     # Format the problem for display
     formatted_problem = f"""**Coding Assessment: {problem['title']}**
