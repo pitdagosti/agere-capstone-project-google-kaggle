@@ -34,3 +34,7 @@ python-magic>=0.4.27  # File type detection
 # pyresparser>=1.0.6  # Uncomment if needed
 # resume-parser>=0.8.4  # Uncomment if needed
 
+google-api-python-client
+google-auth
+google-auth-oauthlib
+google-auth-httplib2

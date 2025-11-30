@@ -1,5 +1,7 @@
 # AGENTS FILE 🧑‍🏭
 
+from dotenv import load_dotenv
+load_dotenv()
 # Packages Import
 from google.adk.agents import Agent, LlmAgent
 from google.adk.tools import google_search, AgentTool, FunctionTool
@@ -11,14 +13,175 @@ from pathlib import Path
 
 
 
-# Import custom tools
-from src.tools import read_cv, list_available_cvs, compare_candidates, job_listing_tool, code_execution_tool # MODIFICATO: Usiamo l'oggetto FunctionTool 'job_listing_tool'
+from src.tools import (
+    read_cv, 
+    list_available_cvs, 
+    compare_candidates, 
+    job_listing_tool,
+    calendar_get_busy,
+    calendar_book_slot,
+    code_execution_tool,
+    problem_presenter_tool,
+)
 
 # Load environment variables
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
+
+
+# ============================================================================
+# PRE-PROGRAMMED CODING PROBLEMS
+# ============================================================================
+
+def get_coding_problem(job_title: str = "default") -> dict:
+    """
+    Returns a pre-programmed coding problem based on job category.
+    These are simple, well-tested problems that work in the sandbox.
+    
+    Args:
+        job_title: The job title to determine which problem to use
+        
+    Returns:
+        dict with 'title', 'description', 'test_code', 'expected_output'
+    """
+    
+    # Handle None, empty, or non-string job_title
+    if not job_title or not isinstance(job_title, str):
+        job_title = "default"
+    
+    # Normalize job title for matching
+    job_lower = job_title.lower()
+    
+    # Computer Vision / Image Processing Problems (check FIRST - most specific)
+    if any(word in job_lower for word in ['vision', 'computer vision', 'image', 'cv']):
+        return {
+            'title': 'Image Feature Extractor',
+            'description': '''Write a function `extract_features(image_data)` that processes 2D image data.
+image_data is a list of lists of pixel intensity values (0-255).
+Return the top 3 most frequent pixel values in descending order of frequency.
+If fewer than 3 unique values, return all of them.
+If empty, return empty list.''',
+            'test_code': '''# Test Case 1
+image1 = [[10, 20, 10], [30, 10, 20]]
+print(extract_features(image1))
+
+# Test Case 2
+image2 = [[5, 5, 5], [5, 10, 15]]
+print(extract_features(image2))
+
+# Test Case 3
+image3 = []
+print(extract_features(image3))
+
+# Test Case 4
+image4 = [[7]]
+print(extract_features(image4))''',
+            'expected_output': '[10, 20, 30]\n[5, 10, 15]\n[]\n[7]'
+        }
+    
+    # Backend / API / Microservices Problems
+    elif any(word in job_lower for word in ['backend', 'api', 'microservice']):
+        return {
+            'title': 'User Data Aggregation',
+            'description': '''Write a function `sum_even_user_values(users)` that takes a list of dictionaries. 
+Each dictionary has 'id' and 'value' keys. Sum the 'value' for users with even 'id'. 
+If the sum exceeds 1000, return double the sum. Otherwise, return the sum as is.''',
+            'test_code': '''# Test Case 1: Basic test
+users1 = [{'id': 1, 'value': 100}, {'id': 2, 'value': 200}, {'id': 3, 'value': 300}, {'id': 4, 'value': 400}]
+print(sum_even_user_values(users1))
+
+# Test Case 2: Sum exceeds 1000
+users2 = [{'id': 2, 'value': 500}, {'id': 4, 'value': 600}, {'id': 6, 'value': 700}]
+print(sum_even_user_values(users2))
+
+# Test Case 3: No even IDs
+users3 = [{'id': 1, 'value': 100}, {'id': 3, 'value': 300}, {'id': 5, 'value': 500}]
+print(sum_even_user_values(users3))
+
+# Test Case 4: Empty list
+users4 = []
+print(sum_even_user_values(users4))
+
+# Test Case 5: Sum equals 1000
+users5 = [{'id': 2, 'value': 500}, {'id': 3, 'value': 100}, {'id': 4, 'value': 500}]
+print(sum_even_user_values(users5))''',
+            'expected_output': '600\n3600\n0\n0\n1000'
+        }
+    
+    # Data Science / NLP / ML Problems
+    elif any(word in job_lower for word in ['data', 'scientist', 'nlp', 'machine learning', 'ml ']):
+        return {
+            'title': 'Text Sentiment Analyzer',
+            'description': '''Write a function `analyze_sentiment(text_list)` that takes a list of strings.
+For each text, determine sentiment: 'positive', 'negative', or 'neutral'.
+- Contains 'good', 'great', 'excellent', 'love' → 'positive'
+- Contains 'bad', 'terrible', 'awful', 'hate' → 'negative'
+- Negative keywords take precedence if both present
+- Otherwise → 'neutral'
+Return a list of sentiment labels.''',
+            'test_code': '''# Test Case 1
+print(analyze_sentiment(["This is good", "I hate this", "It was excellent", "The weather"]))
+
+# Test Case 2
+print(analyze_sentiment([]))
+
+# Test Case 3
+print(analyze_sentiment(["This is not good, but it's bad"]))
+
+# Test Case 4
+print(analyze_sentiment(["Love the product!", "Terrible service"]))''',
+            'expected_output': "['positive', 'negative', 'positive', 'neutral']\n[]\n['negative']\n['positive', 'negative']"
+        }
+    
+    # Full-Stack / Frontend / General Developer Problems
+    elif any(word in job_lower for word in ['full', 'stack', 'frontend', 'developer', 'software', 'engineer']):
+        return {
+            'title': 'Transaction Balance Calculator',
+            'description': '''Write a function `calculate_balance(transactions)` that takes a list of transaction dictionaries.
+Each has 'type' ('deposit' or 'withdrawal') and 'amount' keys.
+Return the final balance: add deposits, subtract withdrawals.
+Start from balance 0.''',
+            'test_code': '''# Test Case 1
+trans1 = [{'type': 'deposit', 'amount': 100}, {'type': 'withdrawal', 'amount': 30}]
+print(calculate_balance(trans1))
+
+# Test Case 2
+trans2 = []
+print(calculate_balance(trans2))
+
+# Test Case 3
+trans3 = [{'type': 'withdrawal', 'amount': 50}]
+print(calculate_balance(trans3))
+
+# Test Case 4
+trans4 = [{'type': 'deposit', 'amount': 200}, {'type': 'deposit', 'amount': 150}, {'type': 'withdrawal', 'amount': 100}]
+print(calculate_balance(trans4))''',
+            'expected_output': '70\n0\n-50\n250'
+        }
+    
+    # Default problem for any other job
+    else:
+        return {
+            'title': 'List Statistics Calculator',
+            'description': '''Write a function `calculate_stats(numbers)` that takes a list of numbers.
+Return a dictionary with: 'sum', 'average', 'min', 'max'.
+If list is empty, return all values as 0.
+Round average to 2 decimal places.''',
+            'test_code': '''# Test Case 1
+print(calculate_stats([10, 20, 30, 40]))
+
+# Test Case 2
+print(calculate_stats([]))
+
+# Test Case 3
+print(calculate_stats([5]))
+
+# Test Case 4
+print(calculate_stats([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))''',
+            'expected_output': "{'sum': 100, 'average': 25.0, 'min': 10, 'max': 40}\n{'sum': 0, 'average': 0, 'min': 0, 'max': 0}\n{'sum': 5, 'average': 5.0, 'min': 5, 'max': 5}\n{'sum': 55, 'average': 5.5, 'min': 1, 'max': 10}"
+        }
 
 print("✅ ADK components imported successfully.")
 print("✅ ADK will auto-initialize client from environment variables")
@@ -122,8 +285,8 @@ job_listing_agent = Agent(
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
     description="Agent Assistant that lists job opportunities from the SQLite database and matches candidate skills.",
     instruction="""
-    Agent Assistant that provides job listings to candidates.
-    Use the job_listing_tool to fetch jobs from the local SQLite database.
+    Agent Assistant that MUST PROVIDE job listings to candidates.
+    Use the 'job_listing_tool' to fetch jobs from the local SQLite database.
     Always expect to receive a string of skills in 'cv_summary' input to match jobs.
     If cv_summary is empty, fetch jobs without filtering.
     """,
@@ -143,103 +306,274 @@ print("✅ job_listing_agent defined.")
 code_assessment_agent = Agent(
     name="code_assessment_agent",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
-    description="""
-        Professional coding interviewer assistant. Generates a single, simple code exercise,
-        executes the submitted solution in a sandbox, and provides a 'pass' or 'not pass' evaluation.
-        """,
-    instruction="""
-    You are an expert coding assessment agent. You have two distinct modes of operation.
+    description="Executes candidate code and returns pass/not pass",
+    instruction="""You have ONE job: execute code using code_execution_tool.
 
-    **MODE 1: Assignment Generation**
-    - This is your creative task. You will be asked to create an assignment for a specific job role.
-    - **Assignment Generation Rules:**
-      1. You MUST generate **one single, self-contained coding problem**. Not a multi-step quiz.
-      2. The problem MUST be **simple and solvable in a few lines of code**. Avoid complex projects like building a full API.
-      3. The problem MUST be **testable and verifiable** by the `run_code_assignment` tool. This means the solution should `print` a result or `return` a value that can be checked.
-      4. **GOOD EXAMPLE:** "Write a Python function that takes a list of numbers and returns their sum."
-      5. **BAD EXAMPLE:** "Build a complete REST API for a product catalog."
-    - After generating the simple assignment, ask the user to submit their code.
+**MANDATORY PROCESS:**
+1. User gives you code
+2. You MUST call: code_execution_tool(code="<exact code string>")
+3. Read tool response
+4. If contains "✅ PASS" → respond ONLY: `pass`
+5. If contains "❌" → respond ONLY: `not pass`
 
-    **MODE 2: Strict Evaluation**
-    - This happens when the user provides code. Your task is to evaluate it using a strict, non-negotiable process.
-    - **PROCESS:**
-      1. Take the user's code.
-      2. You **MUST** use the `run_code_assignment` tool to execute it.
-      3. The tool will return a result string. Look ONLY at the very first character of this string.
-      4. If the first character is '✅', your entire response MUST be the single word: `pass`.
-      5. If the first character is '❌', your entire response MUST be the single word: `not pass`.
+**FORBIDDEN:**
+- DO NOT analyze code manually
+- DO NOT respond without calling tool
+- DO NOT skip execution
 
-    **ABSOLUTE RULES FOR EVALUATION:**
-    - Your own opinion about the code's quality is **IRRELEVANT**.
-    - Your evaluation is based **SOLELY** on the tool's output (`✅` or `❌`).
-    - Your final output MUST BE either `pass` or `not pass`. No other words or explanations.
-    """,
+**Example:**
+User: "def add(a,b): return a+b\nprint(add(1,2))"
+You: code_execution_tool(code="def add(a,b): return a+b\nprint(add(1,2))")
+Tool: "✅ PASS: Output matches!"
+You: pass""",
     tools=[code_execution_tool]
 )
 
-# TODO: AGENT TO CREATE AN ASSESSMENT FOR THE CANDIDATE (LANGUAGE TEST)
-# This agent shuold create a language test assessment for the candidate. 
-# The assessment should be written in the language mentioned in the uploaded CV.
-# The candidate shuold be able to provide a message in the chat window to the agent as response to the assessment.
-# Provide assessment evaluation and feedback to the candidate.
+# Problem Presenter Agent (Shows pre-programmed problems)
+problem_presenter_agent = Agent(
+    name="problem_presenter_agent",
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
+    description="Presents coding problems using the problem_presenter_tool",
+    instruction="""Call problem_presenter_tool(job_title="<job title>") and return its complete output.
+
+DO NOT add commentary. Just call the tool and show its output.""",
+    tools=[problem_presenter_tool]
+)
+
+# Language Assessment Agent
+language_assessment_agent = Agent(
+    name="language_assessment_agent",
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
+    description="""
+        Professional language proficiency assessment agent. Creates a simple language test
+        based on the candidate's CV languages, evaluates their response, and provides proficiency feedback.
+        """,
+    instruction="""
+    You are an expert language assessment agent. You have two distinct modes of operation.
+
+    **MODE 1: Language Test Generation**
+    - You will be given information about a candidate's language skills from their CV.
+    - **Your Task:**
+      1. Select ONE language from the CV that the candidate claims proficiency in (preferably not their native language).
+      2. Create a SIMPLE conversational prompt in that language.
+      3. The prompt should be appropriate for the proficiency level claimed (e.g., if they claim B1, use B1-level language).
+    
+    - **Assessment Guidelines:**
+      * **A1-A2 (Basic):** Simple introduction, daily activities
+      * **B1-B2 (Intermediate):** Describe experience, opinions, short scenarios
+      * **C1-C2 (Advanced):** Complex topics, abstract concepts, professional situations
+    
+    - **Good Examples:**
+      * Spanish (B1): "Por favor, describe tu experiencia laboral más reciente y qué responsabilidades tenías."
+        (Please describe your most recent work experience and what responsibilities you had.)
+      
+      * German (C1): "Bitte erläutern Sie, wie Sie mit technischen Herausforderungen in Ihrem letzten Projekt umgegangen sind."
+        (Please explain how you dealt with technical challenges in your last project.)
+      
+      * French (B2): "Pouvez-vous décrire un projet récent sur lequel vous avez travaillé et quel était votre rôle?"
+        (Can you describe a recent project you worked on and what was your role?)
+    
+    - After generating the prompt, clearly state:
+      * Which language you're testing
+      * What proficiency level you're assessing
+      * Ask the candidate to respond in that language
+
+    **MODE 2: Response Evaluation**
+    - When the candidate provides their response, evaluate it based on:
+      1. **Appropriateness:** Did they respond in the correct language?
+      2. **Comprehension:** Did they understand the prompt?
+      3. **Grammar and Vocabulary:** Quality of language use for the claimed level
+      4. **Completeness:** Did they fully address the question?
+    
+    - **Your Evaluation Response:**
+      * Provide a brief assessment (2-3 sentences)
+      * State whether the response demonstrates the claimed proficiency level
+      * Final verdict: `proficiency_confirmed` or `proficiency_needs_improvement`
+    
+    - **Example Evaluation:**
+      "Your response demonstrates good comprehension and appropriate vocabulary for B1 level Spanish. 
+      Grammar is mostly correct with minor errors typical of this level. The response fully addresses 
+      the question about work experience. Verdict: proficiency_confirmed"
+
+    **IMPORTANT RULES:**
+    - Be encouraging and professional in your feedback
+    - Consider that candidates may be nervous
+    - Minor errors are acceptable if overall communication is effective
+    - Only test ONE language per assessment
+    - If they respond in the wrong language, note this in evaluation
+    """,
+    tools=[]  # No tools needed for language assessment
+)
 
 # TODO: AGENT TO SCHEDULE THE CANDIDATE FOR THE LIVE INTERVIEW
 # If the candidate is a good fit, the agent should schedule a live interview for the candidate.
 # PitDagosti's tool leveraging google calendar API should be used to schedule the interview.
 
+# Scheduler Agent aggiornato
+scheduler_agent = Agent(
+    name="scheduler_agent",
+    model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
+    description="Agent that schedules interviews using Google Calendar, robust token handling.",
+    instruction="""
+    You schedule interviews only AFTER receiving 'assignment_result: pass'.
 
-# TODO: ORCHESTRATOR AGENT
-# --- ORCHESTRATOR AGENT AGGIORNATO ---
+    INTELLIGENT WORKFLOW:
+
+    1. Verify assignment_result = 'pass'. If not, stop.
+    2. Verify Google Calendar credentials (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN).
+       - If missing, respond: "Google Calendar credentials are missing. Please configure them in environment variables."
+    3. Refresh access token using refresh token. Stop with clear error if refresh fails.
+    4. Fetch busy slots using `calendar_get_busy` for the next 5 business days.
+       - Only consider **future slots**, after the current datetime.
+       - If fetching fails, log the error but continue with booking if token is valid.
+    5. Identify 3-5 free time slots that do not conflict with busy slots.
+       - Present these options **to the candidate**.
+       - If the candidate email is missing, **ask for it explicitly** before booking.
+    6. Once the candidate selects a slot:
+       - Book the event using `calendar_book_slot`, passing the candidate email.
+       - Confirm the booking with event ID, start, end, and event link.
+    7. Log everything:
+       - Access token used
+       - API responses
+       - Any errors or warnings
+
+    ERROR HANDLING:
+    - Invalid access token → attempt refresh automatically.
+    - API errors (401, 403, 404) → only actionable messages: "Failed to create event: check your Google Calendar account or token."
+    - Do not reveal "integration not configured" if credentials exist.
+    """,
+    tools=[calendar_get_busy, calendar_book_slot]
+)
+
+
+# --- ORCHESTRATOR AGENT ---
+
 orchestrator = LlmAgent(
     name="manager",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
     instruction="""
-    You are a job applicant assistant orchestrator. Coordinate a team of specialized agents to help 
-    candidates find their ideal job match. You MUST delegate tasks to your sub-agents.
-    
-    WORKFLOW AUTOMATICO:
-    
-    1. STEP 1: CV Analysis
-       - When a user uploads a CV, DELEGATE to 'CV_analysis_agent'.
-       - Extract key technical skills from the analysis automatically.
-       - Summarize candidate profile for confirmation.
-       - Then ask: "Would you like me to find job listings that match your profile?"
-    
-    2. STEP 2: Job Listings Matching
-       - If user agrees, call 'job_listing_agent' passing the extracted skills as `cv_summary`.
-       - The agent should return up to 5 jobs ranked by matching skills.
-       - Present the jobs to the user numerated (1, 2, 3...) and with clear details: title, company, location, description, responsibilities, required skills.
-       - Ask: "Which job interests you most? (Choose by selecting the number)".
-       - Map the user's numeric selection to the corresponding job in the list.
-       - Store the selected job for the next steps (e.g., code assessment).
+You are a job applicant assistant orchestrator. Coordinate a team of specialized agents to help 
+candidates find their ideal job match. You MUST delegate tasks to your sub-agents.
 
-    3. STEP 3: Code Assessment
-        - 1) Generation: If the user selects a job that requires coding skills, your first action is to DELEGATE to `code_assessment_agent` to generate the assignment.
-        - 2) - Evaluation: After an assignment has been given, if the user's next message contains a block of code, you **MUST** assume it is a solution. Your only job is to DELEGATE the user's entire message to the `code_assessment_agent` for evaluation.
-        - 3) - Handling the Result: The `code_assessment_agent` will reply with a single word: `pass` or `not pass`.
-            - If the response is `pass`: Congratulate the user for passing and ask if they are ready to proceed to the next step.
-            - If the response is `not pass`: Inform the user that their submission did not pass. Politely ask them to review the assignment and submit a new solution. (Do not give technical feedback yourself).
+WORKFLOW, MANDATORY TO FOLLOW STRICTLY:
 
-    4. STEP 4: Language Assessment
-       - If user selects a job AND the job requires language skills: call 'language_assessment_agent' passing the job details.
-       - The agent should generate a language assessment for the candidate.
-       - The assessment should be written in the language mentioned in the uploaded CV.
-       - The candidate should be able to provide a message in the chat window to the agent as response to the assessment.
-       - Provide assessment evaluation and feedback to the candidate.
-       - Ask: "Would you like me to schedule a live interview for you?"
-       - If user agrees, call 'scheduler_agent' to schedule the interview.
-       - The agent should schedule the interview for the candidate.
-    
-    CRITICAL RULES:
-    - ALWAYS delegate to sub-agents using their exact names.
-    - NEVER skip steps.
-    - Extract and pass skills automatically from CV analysis to job listing agent.
-    - Parse numeric input to select the correct job from the numbered list.
-    """,
+1. STEP 1: CV Analysis
+   - When a user uploads a CV, DELEGATE to 'CV_analysis_agent'.
+   - **CRITICAL**: The agent will return a detailed analysis. You MUST display the FULL analysis to the user.
+     Show ALL sections: Candidate Information, Technical Skills, Languages, Work Experience, Education, Key Strengths, Overall Assessment.
+   - After showing the full analysis, extract key technical skills from it automatically.
+   - Provide a brief summary of the candidate's profile.
+   - Then ask: "Would you like me to find job listings that match your profile?"
+
+2. STEP 2: Job Listings Matching
+   - If user agrees, call 'job_listing_agent' passing the extracted skills as `cv_summary`.
+   - The agent will return job listings. You MUST format and display them properly.
+   - **CRITICAL**: YOU MUST Display jobs in this EXACT format:
+   
+   1. **Job Title** at Company
+      - Location: [location]
+      - Description: [description]
+      - Responsibilities: [responsibilities]
+      - Required Skills: [skills]
+   
+   2. **Job Title** at Company
+      - Location: [location]
+      - Description: [description]
+      - Responsibilities: [responsibilities]
+      - Required Skills: [skills]
+   
+   - After displaying ALL jobs with numbers, ask: "Which job interests you most? (Choose by selecting the number)".
+   - When user provides a number, map it to the corresponding job and proceed to code assessment.
+
+3. STEP 3: Code Assessment (TWO-PHASE PROCESS)
+   - **MANDATORY**: ALL software/engineering jobs require a code assessment. Do NOT skip this step.
+   
+   **PHASE 1: Present Pre-Programmed Problem**
+   - After user selects a job number, call 'problem_presenter_tool' DIRECTLY with the job title string.
+   - Example: problem_presenter_tool(job_title="Machine Learning Engineer – Computer Vision Focus")
+   - The tool will return the complete problem with test cases and constraints.
+   - **CRITICAL**: Display the FULL problem to the user exactly as the tool returns it.
+   - Wait for the candidate to provide their solution in the chat window.
+   
+   **PHASE 2: Evaluate Submission**  
+   - When user submits code, IMMEDIATELY call code_assessment_agent.
+   - Pass the code EXACTLY as submitted, with NO other text.
+   - DO NOT say "I'll evaluate this" or "Please execute" - JUST CALL THE AGENT.
+   - Wait for agent response: 'pass' or 'not pass'.
+   - Store result for scheduling.
+   
+   **Example flow:**
+   User: [submits code]
+   You: code_assessment_agent(code="[exact code user submitted]")
+   Agent: "pass"
+   You: "Great! Your code passed the assessment." 
+   THEN MOVE TO STEP 4: LANGUAGE ASSESSMENT, YOU MUST DO THAT AFTER THE CODE ASSESSMENT PASSED.
+
+4. STEP 4: Language Assessment (MANDATORY for multilingual candidates)
+   - **CRITICAL**: After code assessment passes, you MUST check the CV analysis from STEP 1.
+   - **Language Assessment Trigger:**
+      * If CV shows ANY language OTHER THAN English (with proficiency level like B1, B2, C1, C2, Native, Fluent) → Language assessment is REQUIRED
+      * Examples that TRIGGER assessment: "Spanish: Fluent", "German: C2", "Portuguese: Native", "French: B1"
+      * English-only candidates → Skip language assessment
+      * Specify that if user retrieves "Async Error" He should provide the answer again.
+   
+   - **TWO-PHASE PROCESS (both phases mandatory):**
+   
+   **PHASE 1: Generate Language Test**
+   1. Identify the highest proficiency non-English language from CV
+   2. IMMEDIATELY call 'language_assessment_agent' with:
+      "Generate a language test for candidate [Name]. CV Languages: [full language list]. Selected job: [Job Title]. Test [Language] at [Level] level."
+   3. Display the FULL language test to the user
+   4. Wait for candidate's response in the tested language
+   
+   **PHASE 2: Evaluate Response (DO NOT SKIP THIS!)**
+   5. When user submits language response, you MUST call language_assessment_agent IMMEDIATELY.
+   6. Format: "Evaluate this [Language] response at [Level] level: [user's text]"
+   7. DO NOT paraphrase or summarize the user's response - pass it EXACTLY as written.
+   8. Display the agent's evaluation result to the user.
+   9. Then proceed to STEP 5 (scheduling) regardless of language result.
+   
+   **EXAMPLE OF PHASE 2:**
+   User submits: "Hola, trabajé en..."
+   You MUST call: language_assessment_agent("Evaluate this Spanish response at C1 level: Hola, trabajé en...")
+   Agent returns: "Your Spanish demonstrates C1 proficiency. proficiency_confirmed"
+   You display: [agent's evaluation]
+   Then: Proceed to STEP 5
+   
+   **CRITICAL**: Do NOT skip calling the agent for evaluation! Do NOT just say "proficiency confirmed" without calling the agent!
+
+5. STEP 5: Schedule Live Interview
+   - **CRITICAL**: Only proceed to scheduling if STEP 3 (code assessment) AND 4 (language assessment) returned 'pass'.
+   - If code assessment result is 'not pass', inform the user and DO NOT call scheduler_agent.
+   - If code assessment result is 'pass' AND language assessment is complete (if applicable), call 'scheduler_agent' with the assessment_result.
+   - The scheduler will:
+       - Fetch busy slots using `calendar_get_busy`.
+       - IT MUST PROPOSE FREE SLOTS TO THE CANDIDATE.
+       - Ask the candidate to confirm a preferred time.
+       - Book the selected slot using `calendar_book_slot`.
+       - Return confirmation with start, end, and event ID.
+   - **NEVER skip to scheduling without a code assessment pass result.**
+
+CRITICAL RULES:
+- ALWAYS delegate to sub-agents using their exact names.
+- NEVER skip steps.
+- **NEVER skip code assessment. ALL jobs require code assessment before scheduling.**
+- Extract and pass skills automatically from CV analysis to job listing agent.
+- Parse numeric input to select the correct job from the numbered list.
+- **ALWAYS display the FULL response from sub-agents to the user. NEVER summarize or paraphrase.**
+- When CV_analysis_agent returns analysis, show the ENTIRE analysis with all sections.
+- When job_listing_agent returns jobs, format them with clear numbers (1, 2, 3...) and ALL details.
+- When code_assessment_agent returns an assignment, show the ENTIRE problem statement to the user.
+- **DO NOT SKIP showing information. Users CANNOT see what sub-agents return unless you display it.**
+- **WORKFLOW ORDER: CV Analysis → Job Selection → Code Assessment → (if pass) Scheduling**
+""",
     tools=[
-        AgentTool(CV_analysis_agent), 
+        AgentTool(CV_analysis_agent),
         AgentTool(job_listing_agent),
-        AgentTool(code_assessment_agent)
+        problem_presenter_tool,  # Direct tool call instead of agent
+        AgentTool(code_assessment_agent),
+        AgentTool(language_assessment_agent),
+        AgentTool(scheduler_agent),
     ],
 )
 
