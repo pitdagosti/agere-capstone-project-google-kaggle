@@ -5,6 +5,13 @@ AGERE (**AGE**ntic **RE**cruiter) is an **AI-powered interview assistant** built
 > 🏆 **[Kaggle x Google Agents Intensive Capstone Project](https://www.kaggle.com/competitions/agents-intensive-capstone-project/overview#how-do-i-make-a-submission)**  
 > **Helping job candidates ace interviews with precision, confidence, and structure.**
 
+## Click to watch the video presentation!
+
+<p align="center">
+<a href="youtube.com/watch?v=pnCnia1M5jQ&feature=youtu.be">
+  <img src="https://github.com/user-attachments/assets/4479c4b6-67cb-4f98-8675-4b21c0bc10e6" alt="AGERE" width="600"/>
+</a>
+</p>
 ---
 
 ## 🚨 Problem Statement
