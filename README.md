@@ -1,8 +1,8 @@
 # **PROJECT AGERE (Agentic Recruiter) - Google x Kaggle**
 
-AGERE (**AGE**ntic **RE**cruiter) is an **AI-powered interview assistant** built with Google's Agent Development Kit (ADK) and Gemini 2.5 models. It guides job candidates through every step of the application process: analyzing CVs, matching candidates to jobs, validating technical skills through automated coding assessments, and scheduling live interviews.  
+AGERE (**AGE**ntic **RE**cruiter) is an **AI-powered interview assistant** built with Google's Agent Development Kit (ADK) and Gemini 2.5 models. It guides job candidates through every step of the application process: analyzing CVs, matching candidates to jobs, validating technical skills through automated coding assessments, assessing language proficiency, and scheduling live interviews.
 
-> 🏆 **[Kaggle x Google Agents Intensive Capstone Project](https://www.kaggle.com/competitions/agents-intensive-capstone-project/overview#how-do-i-make-a-submission)**  
+> 🏆 **[Kaggle x Google Agents Intensive Capstone Project](https://www.kaggle.com/competitions/agents-intensive-capstone-project/overview#how-do-i-make-a-submission)**
 > **Helping job candidates ace interviews with precision, confidence, and structure.**
 
 ## Click to watch the video presentation!
@@ -13,14 +13,16 @@ AGERE (**AGE**ntic **RE**cruiter) is an **AI-powered interview assistant** built
 </a>
 </p>
 
+---
+
 ## 🚨 Problem Statement
 
 Preparing for technical interviews is often stressful and inefficient due to:
 
-- Fragmented solutions with **no end-to-end support** from resume to interview.  
-- Limited **personalized feedback** on skills and coding abilities.  
-- Difficulty in **validating technical solutions** in coding, ML, and system design.  
-- Time-consuming preparation without guidance on where to focus.  
+* Fragmented solutions with **no end-to-end support** from resume to interview.
+* Limited **personalized feedback** on skills, coding, and language proficiency.
+* Difficulty in **validating technical solutions** in coding, ML, and system design.
+* Time-consuming preparation without guidance on where to focus.
 
 AGERE solves these problems by orchestrating **specialized AI agents** in a structured workflow, providing interactive, automated guidance throughout the candidate journey.
 
@@ -30,13 +32,14 @@ AGERE solves these problems by orchestrating **specialized AI agents** in a stru
 
 AGERE is a **multi-agent orchestration system** that automates candidate preparation:
 
-1. **CV Analysis:** Reads and parses CVs (.txt or .pdf), extracting technical skills, work experience, education, languages, and strengths. Produces structured feedback and highlights gaps.  
-2. **Job Matching:** Recommends suitable openings from a local database based on extracted skills, including full job details.  
-3. **Coding Assessment:** Presents tailored coding problems, executes submissions in a secure sandbox, and provides automatic pass/fail evaluation.  
-4. **Interview Scheduling:** Finds available slots and books live interviews via Google Calendar, handling OAuth tokens and conflicts seamlessly.  
-5. **End-to-End Orchestration:** Ensures tasks are executed sequentially (CV → Job → Code → Scheduling), with outputs fully displayed and reproducible.  
+1. **CV Analysis:** Reads and parses CVs (.txt or .pdf), extracting technical skills, work experience, education, languages, and strengths. Produces structured feedback and highlights gaps.
+2. **Job Matching:** Recommends suitable openings from a local database based on extracted skills, including full job details.
+3. **Coding Assessment:** Presents tailored coding problems based on job role, executes submissions in a secure sandbox, and provides automatic pass/fail evaluation.
+4. **Language Assessment:** Generates a conversational test in a candidate's non-English language (if listed on CV) and evaluates proficiency automatically.
+5. **Interview Scheduling:** Finds available slots and books live interviews via Google Calendar, handling OAuth tokens, conflicts, and time zones seamlessly.
+6. **End-to-End Orchestration:** Ensures tasks are executed sequentially (CV → Job → Coding → Language → Scheduling), with outputs fully displayed and reproducible.
 
-> **Note:** AGERE acts as a virtual recruiter and career coach, coordinating specialized agents automatically. Language assessment is planned for future iterations.
+> **Note:** AGERE acts as a virtual recruiter and career coach, coordinating specialized agents automatically.
 
 ---
 
@@ -44,22 +47,30 @@ AGERE is a **multi-agent orchestration system** that automates candidate prepara
 
 ### Multi-Agent System
 
-- **LLM-powered orchestrator:** Gemini 2.5 manages user requests and coordinates agents.  
-- **Strict sequential workflow:** CV analysis → Job matching → Coding assessment → Scheduling.  
+* **LLM-powered orchestrator:** Gemini 2.5 manages user requests and coordinates agents.
+* **Strict sequential workflow:** CV analysis → Job matching → Coding assessment → Language assessment → Scheduling.
+* **Orchestration logic:** Extracts technical skills from CV, selects coding problems dynamically based on job title, evaluates submitted code automatically, triggers language tests if applicable, and books interviews only upon successful completion of previous steps.
 
 ### Tools
 
-- **Custom tools:** CV parsing (`read_cv`, `list_available_cvs`, `compare_candidates`), job recommendation (`list_jobs_from_db`), sandboxed Python code execution (`execute_code`, `run_code_assignment`), calendar scheduling (`calendar_get_busy`, `calendar_book_slot`).  
-- **Sandbox security:** Code runs in a restricted environment with only safe built-ins to prevent security risks.  
+* **Custom tools:**
+
+  * CV operations: `read_cv`, `list_available_cvs`, `compare_candidates`
+  * Job recommendation: `list_jobs_from_db`
+  * Sandboxed Python execution: `execute_code`, `run_code_assignment`
+  * Calendar scheduling: `calendar_get_busy`, `calendar_book_slot`
+* **Sandbox security:** Code runs in a restricted environment with safe built-ins and execution limits to prevent infinite loops or unsafe operations.
+* **Retry logic:** All API calls include configurable retry options with exponential backoff.
 
 ### Sessions & Memory
 
-- **Session state management:** Maintains uploaded files, chat history, and agent runner state using Streamlit’s `st.session_state`.  
-- **Context management:** Stores conversation and expected outputs to ensure consistent multi-step interactions.
+* **Session state management:** Maintains uploaded files, chat history, and agent runner state using Streamlit’s `st.session_state`.
+* **Context management:** Stores conversation and expected outputs to ensure consistent multi-step interactions.
 
 ### Observability
 
-- **Logging:** All agent events, tool calls, and user inputs are logged for traceability.
+* **Logging:** All agent events, tool calls, code executions, and user inputs are logged for traceability.
+* **Error handling:** Failed code assessments, language assessments, or scheduling attempts are captured and returned with actionable messages.
 
 ---
 
@@ -76,6 +87,7 @@ graph TB
         CV[📄 CV Analysis Agent<br/>Reads & parses resumes<br/>Gemini 2.5]
         JOB[🔍 Job Matching Agent<br/>Matches candidates to jobs<br/>Gemini 2.5]
         CODE[⚙️ Code Assessment Agent<br/>Evaluates coding assignments<br/>Gemini 2.5]
+        LANG[🌐 Language Assessment Agent<br/>Generates & evaluates language tests<br/>Gemini 2.5]
         CAL[📅 Calendar Agent<br/>Manages interview scheduling<br/>Gemini 2.5]
     end
 
@@ -95,6 +107,7 @@ graph TB
     ORCH --> CV
     ORCH --> JOB
     ORCH --> CODE
+    ORCH --> LANG
     ORCH --> CAL
 
     CV --> CVTOOLS
@@ -110,17 +123,18 @@ graph TB
     style CV fill:#f093fb,stroke:#333,stroke-width:2px,color:#333
     style JOB fill:#f093fb,stroke:#333,stroke-width:2px,color:#333
     style CODE fill:#f093fb,stroke:#333,stroke-width:2px,color:#333
+    style LANG fill:#f093fb,stroke:#333,stroke-width:2px,color:#333
     style CAL fill:#f093fb,stroke:#333,stroke-width:2px,color:#333
     style GCAL fill:#34a853,stroke:#333,stroke-width:2px,color:#fff
     style JOBDB fill:#ffb347,stroke:#333,stroke-width:2px,color:#333
-````
+```
 
 **Architecture Notes:**
 
-* **Orchestrator agent** drives the workflow and ensures sequential task execution.
-* **Specialized agents** handle domain-specific logic: CV parsing, coding evaluation, and scheduling.
-* **Custom tools** provide concrete implementations for file I/O, database queries, sandbox execution, and calendar management.
-* **External services** include the SQLite jobs database and Google Calendar for live interview booking.
+* **Orchestrator agent** drives the sequential workflow and coordinates all specialized agents.
+* **Specialized agents** handle domain-specific tasks: CV parsing, coding evaluation, language assessment, and scheduling.
+* **Custom tools** implement file I/O, database queries, sandbox execution, and calendar integration.
+* **External services** include SQLite job listings database and Google Calendar for live interview booking.
 
 ---
 
@@ -169,7 +183,7 @@ pip install -r requirements.txt
 ```bash
 python -m spacy download en_core_web_sm
 cp env.example .env
-# Edit .env to add your Google API credentials
+# Edit .env to add your Google API credentials and Gemini API key
 ```
 
 ### 3. Launch Streamlit UI
@@ -194,7 +208,7 @@ streamlit run main.py
 ## 📜 License
 
 **CC BY-SA 4.0** for code and documentation.
-![CC BY-SA 4.0](https://i.creativecommons.org/l/by-sa/4.0/88x31.png)  
+![CC BY-SA 4.0](https://i.creativecommons.org/l/by-sa/4.0/88x31.png)
 [More info](https://creativecommons.org/licenses/by-sa/4.0/)
 
 ---
@@ -205,7 +219,7 @@ We welcome community contributions!
 
 * Bug reports & feature requests via GitHub Issues.
 * Pull requests for new features, bug fixes, or improvements.
-* Please maintain code readability and follow existing architecture patterns.
+* Maintain code readability and follow existing architecture patterns.
 
 ---
 
@@ -220,4 +234,3 @@ We welcome community contributions!
 [📖 Documentation](https://github.com/pitdagosti/capstone-project-google-kaggle/main/README.md) • [🐛 Report Bug](https://github.com/pitdagosti/capstone-project-google-kaggle/issues) • [💡 Request Feature](https://github.com/pitdagosti/capstone-project-google-kaggle/issues)
 
 </div>
-```
