@@ -8,7 +8,7 @@ AGERE (**AGE**ntic **RE**cruiter) is an **AI-powered interview assistant** built
 ## Click to watch the video presentation!
 
 <p align="center">
-<a href="youtube.com/watch?v=pnCnia1M5jQ&feature=youtu.be">
+<a href="https://www.youtube.com/watch?v=pnCnia1M5jQ">
   <img src="https://github.com/user-attachments/assets/4479c4b6-67cb-4f98-8675-4b21c0bc10e6" alt="AGERE" width="600"/>
 </a>
 </p>
