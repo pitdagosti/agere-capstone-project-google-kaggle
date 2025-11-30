@@ -141,7 +141,7 @@ graph TB
 ## 📁 Project Structure
 
 ```
-capstone-project-google-kaggle/
+agere-capstone-project-google-kaggle/
 ├── main.py                    # Streamlit App
 ├── requirements.txt
 ├── .env / env.example
@@ -168,8 +168,8 @@ capstone-project-google-kaggle/
 ### 1. Clone & create environment
 
 ```bash
-git clone https://github.com/pitdagosti/capstone-project-google-kaggle.git
-cd capstone-project-google-kaggle
+git clone https://github.com/pitdagosti/agere-capstone-project-google-kaggle.git
+cd agere-capstone-project-google-kaggle
 python -m venv .venv
 source .venv/bin/activate  # macOS/Linux
 # OR
@@ -231,6 +231,6 @@ We welcome community contributions!
 
 *Prepare faster, practice smarter, and approach every interview with confidence.*
 
-[📖 Documentation](https://github.com/pitdagosti/capstone-project-google-kaggle/main/README.md) • [🐛 Report Bug](https://github.com/pitdagosti/capstone-project-google-kaggle/issues) • [💡 Request Feature](https://github.com/pitdagosti/capstone-project-google-kaggle/issues)
+[📖 Documentation](https://github.com/pitdagosti/agere-capstone-project-google-kaggle/main/README.md) • [🐛 Report Bug](https://github.com/pitdagosti/agere-capstone-project-google-kaggle/issues) • [💡 Request Feature](https://github.com/pitdagosti/agere-capstone-project-google-kaggle/issues)
 
 </div>
