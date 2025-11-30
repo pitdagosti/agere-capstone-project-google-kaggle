@@ -8,12 +8,14 @@ from google.adk.tools import FunctionTool
 import sqlite3
 import json
 from .code_sandbox import execute_code
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dateutil import parser
 import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import os
+import pytz
+
 
 # Try to import Context - if not available, we'll work without it
 try:
@@ -48,39 +50,51 @@ def get_calendar_service():
     Restituisce un servizio Google Calendar autenticato usando le credenziali OAuth dal .env.
     """
     # Check if credentials are configured
-    refresh_token = os.getenv("GOOGLE_REFRESH_TOKEN")
-    client_id = os.getenv("GOOGLE_CLIENT_ID")
-    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
-    
-    if not all([refresh_token, client_id, client_secret]):
-        raise ValueError(
-            "Google Calendar credentials not configured. "
-            "Please set GOOGLE_REFRESH_TOKEN, GOOGLE_CLIENT_ID, and GOOGLE_CLIENT_SECRET in .env file."
+    try:
+        refresh_token = os.getenv("GOOGLE_REFRESH_TOKEN")
+        client_id = os.getenv("GOOGLE_CLIENT_ID")
+        client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+        
+        if not all([refresh_token, client_id, client_secret]):
+            raise ValueError(
+                "Google Calendar credentials not configured. "
+                "Please set GOOGLE_REFRESH_TOKEN, GOOGLE_CLIENT_ID, and GOOGLE_CLIENT_SECRET in .env file."
+            )
+        
+        creds = Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=client_id,
+            client_secret=client_secret,
+            scopes=["https://www.googleapis.com/auth/calendar"]
         )
+
+        service = build('calendar', 'v3', credentials=creds)
+        return service
     
-    creds = Credentials(
-        None,
-        refresh_token=refresh_token,
-        client_id=client_id,
-        client_secret=client_secret,
-        token_uri="https://oauth2.googleapis.com/token",
-    )
-    service = build('calendar', 'v3', credentials=creds)
-    return service
+    except Exception as e:
+        print("RAW ERROR:", repr(e))
 
 
 def calendar_get_busy_fn(start: str, end: str) -> str:
     """
-    Query busy slots direttamente da Google Calendar.
-
+    Query busy slots directly from Google Calendar.
+    
     Args:
-        start: ISO format datetime string
-        end: ISO format datetime string
+        start: ISO format datetime string with timezone (e.g., 2025-11-30T10:00:00+01:00)
+        end: ISO format datetime string with timezone
 
     Returns:
-        Busy slots in JSON format as string
+        JSON string with busy slots or detailed error.
     """
     try:
+        CALENDAR_ID = os.getenv("CALENDAR_ID")
+        if not CALENDAR_ID:
+            raise ValueError(
+                "CALENDAR_ID not configured. Please set CALENDAR_ID in your .env file."
+            )
+        
         service = get_calendar_service()
         events_result = service.events().list(
             calendarId=CALENDAR_ID,
@@ -90,57 +104,100 @@ def calendar_get_busy_fn(start: str, end: str) -> str:
             orderBy='startTime'
         ).execute()
 
-        busy_slots = []
-        for event in events_result.get('items', []):
-            busy_slots.append({
+        busy_slots = [
+            {
                 "start": event['start'].get('dateTime', event['start'].get('date')),
                 "end": event['end'].get('dateTime', event['end'].get('date')),
                 "summary": event.get('summary', '')
-            })
+            }
+            for event in events_result.get('items', [])
+        ]
 
-        return f"✅ Successfully fetched calendar availability.\n\nBusy slots between {start} and {end}:\n{json.dumps(busy_slots, indent=2)}"
+        return json.dumps({
+            "status": "success",
+            "start": start,
+            "end": end,
+            "busy_slots": busy_slots
+        }, indent=2)
 
     except ValueError as ve:
-        # Configuration error
-        return f"❌ CALENDAR_NOT_CONFIGURED: {str(ve)}\n\nTo enable Google Calendar integration, please configure the following in your .env file:\n- GOOGLE_REFRESH_TOKEN\n- GOOGLE_CLIENT_ID\n- GOOGLE_CLIENT_SECRET\n- CALENDAR_ID"
-    except Exception as e:
-        # Other errors (API errors, network issues, etc.)
-        return f"❌ CALENDAR_API_ERROR: Failed to fetch busy slots - {type(e).__name__}: {str(e)}\n\nThis is likely due to expired credentials or Calendar API not being enabled."
+        return json.dumps({
+            "status": "error",
+            "type": "CALENDAR_NOT_CONFIGURED",
+            "message": str(ve)
+        }, indent=2)
 
+    except Exception as e:
+        return json.dumps({
+            "status": "error",
+            "type": "CALENDAR_API_ERROR",
+            "error_type": type(e).__name__,
+            "message": str(e)
+        }, indent=2)
 
 def calendar_book_slot_fn(start: str, end: str, summary: str = "Interview", attendee_email: str = None) -> str:
     """
-    Prenota un evento direttamente su Google Calendar.
+    Book an event directly on Google Calendar, only for today or future dates.
 
     Args:
-        start: ISO format start datetime string
-        end: ISO format end datetime string
-        summary: Event summary/title
-        attendee_email: Optional candidate email
+        start: ISO format start datetime string with timezone
+        end: ISO format end datetime string with timezone
+        summary: Event title
+        attendee_email: Optional email of the attendee
 
     Returns:
-        Result of booking (success/failure)
+        JSON string with booking result or detailed error.
     """
     try:
+        # Ensure CALENDAR_ID is configured
+        CALENDAR_ID = os.getenv("CALENDAR_ID")
+        if not CALENDAR_ID:
+            raise ValueError("CALENDAR_ID not configured. Please set CALENDAR_ID in your .env file.")
+
+        # Convert start/end to datetime objects in Rome timezone
+        rome_tz = pytz.timezone("Europe/Rome")
+        start_dt = datetime.fromisoformat(start).astimezone(rome_tz)
+        end_dt = datetime.fromisoformat(end).astimezone(rome_tz)
+        now_dt = datetime.now(rome_tz)
+
+        if start_dt < now_dt:
+            raise ValueError(f"Cannot book in the past. Next available start datetime is after {now_dt.isoformat()}")
+
         service = get_calendar_service()
+
         event = {
             "summary": summary,
-            "start": {"dateTime": start, "timeZone": "Europe/Rome"},
-            "end": {"dateTime": end, "timeZone": "Europe/Rome"},
+            "start": {"dateTime": start_dt.isoformat(), "timeZone": "Europe/Rome"},
+            "end": {"dateTime": end_dt.isoformat(), "timeZone": "Europe/Rome"},
         }
+
         if attendee_email:
             event["attendees"] = [{"email": attendee_email}]
 
         created_event = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        return f"✅ Booking successful!\n\nEvent Details:\n- Event ID: {created_event['id']}\n- Summary: {summary}\n- Start: {created_event['start']['dateTime']}\n- End: {created_event['end']['dateTime']}"
+
+        return json.dumps({
+            "status": "success",
+            "event_id": created_event.get("id"),
+            "summary": created_event.get("summary"),
+            "start": created_event['start'].get('dateTime'),
+            "end": created_event['end'].get('dateTime')
+        }, indent=2)
 
     except ValueError as ve:
-        # Configuration error
-        return f"❌ CALENDAR_NOT_CONFIGURED: {str(ve)}\n\nTo enable Google Calendar integration, please configure the following in your .env file:\n- GOOGLE_REFRESH_TOKEN\n- GOOGLE_CLIENT_ID\n- GOOGLE_CLIENT_SECRET\n- CALENDAR_ID"
-    except Exception as e:
-        # Other errors (API errors, network issues, etc.)
-        return f"❌ CALENDAR_BOOKING_ERROR: Failed to book slot - {type(e).__name__}: {str(e)}\n\nThis is likely due to expired credentials, Calendar API not being enabled, or invalid datetime format."
+        return json.dumps({
+            "status": "error",
+            "type": "CALENDAR_NOT_CONFIGURED" if "CALENDAR_ID" in str(ve) else "INVALID_DATE",
+            "message": str(ve)
+        }, indent=2)
 
+    except Exception as e:
+        return json.dumps({
+            "status": "error",
+            "type": "CALENDAR_BOOKING_ERROR",
+            "error_type": type(e).__name__,
+            "message": str(e)
+        }, indent=2)
 
 
 
