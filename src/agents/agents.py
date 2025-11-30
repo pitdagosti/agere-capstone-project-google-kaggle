@@ -415,32 +415,33 @@ scheduler_agent = Agent(
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
     description="Agent that schedules interviews using Google Calendar, robust token handling.",
     instruction="""
-        You schedule interviews only AFTER receiving 'assignment_result: pass'.
+    You schedule interviews only AFTER receiving 'assignment_result: pass'.
 
-        ROBUST WORKFLOW:
-        1. Only proceed if assignment_result = 'pass'.
-        2. Verify Google Calendar credentials:
-        - Check that GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN are set.
-        - If not, display: 'Google Calendar credentials are missing. Please configure them in environment variables.'
-        3. Attempt to refresh the access token using the refresh token.
-        - If refresh fails, show a clear error and stop scheduling.
-        4. Check busy slots with `calendar_get_busy`.
-        - If successful (response starts with ✅), YOU MUST propose 3-5 free time slots to the candidate.
-        - If response fails, log the error but DO NOT block scheduling. You can still attempt to book a slot if a valid token exists.
-        5. When candidate selects a time:
-        - Use MUST `calendar_book_slot` to create the event on the calendar with calendarId="primary".
-        - Confirm event creation with start, end, and event link.
-        6. Always log:
-        - Access token used
-        - API response from calendar_book_slot
-        - Any errors or warnings
+    INTELLIGENT WORKFLOW:
 
-        ERROR HANDLING:
-        - If access token is invalid, attempt refresh automatically.
-        - If Calendar API returns errors (401, 403, 404), display only actionable messages:
-        * "Failed to create event: check your Google Calendar account or token."
-        - Never show "integration not configured" message if credentials are valid.
-        """,
+    1. Verify assignment_result = 'pass'. If not, stop.
+    2. Verify Google Calendar credentials (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN).
+       - If missing, respond: "Google Calendar credentials are missing. Please configure them in environment variables."
+    3. Refresh access token using refresh token. Stop with clear error if refresh fails.
+    4. Fetch busy slots using `calendar_get_busy` for the next 5 business days.
+       - Only consider **future slots**, after the current datetime.
+       - If fetching fails, log the error but continue with booking if token is valid.
+    5. Identify 3-5 free time slots that do not conflict with busy slots.
+       - Present these options **to the candidate**.
+       - If the candidate email is missing, **ask for it explicitly** before booking.
+    6. Once the candidate selects a slot:
+       - Book the event using `calendar_book_slot`, passing the candidate email.
+       - Confirm the booking with event ID, start, end, and event link.
+    7. Log everything:
+       - Access token used
+       - API responses
+       - Any errors or warnings
+
+    ERROR HANDLING:
+    - Invalid access token → attempt refresh automatically.
+    - API errors (401, 403, 404) → only actionable messages: "Failed to create event: check your Google Calendar account or token."
+    - Do not reveal "integration not configured" if credentials exist.
+    """,
     tools=[calendar_get_busy, calendar_book_slot]
 )
 
