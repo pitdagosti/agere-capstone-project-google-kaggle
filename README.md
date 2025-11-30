@@ -195,7 +195,7 @@ streamlit run main.py
 ## 📜 License
 
 **CC BY-SA 4.0** for code and documentation.
-![CC BY-SA 4.0](https://i.creativecommons.org/l/by-sa/4.0/88x31.png)
+![CC BY-SA 4.0](https://i.creativecommons.org/l/by-sa/4.0/88x31.png)  
 [More info](https://creativecommons.org/licenses/by-sa/4.0/)
 
 ---
@@ -218,7 +218,7 @@ We welcome community contributions!
 
 *Prepare faster, practice smarter, and approach every interview with confidence.*
 
-[📖 Documentation](./md_files/) • [🐛 Report Bug](issues) • [💡 Request Feature](issues)
+[📖 Documentation](https://github.com/pitdagosti/capstone-project-google-kaggle/edit/main/README.md) • [🐛 Report Bug](https://github.com/pitdagosti/capstone-project-google-kaggle/issues) • [💡 Request Feature](https://github.com/pitdagosti/capstone-project-google-kaggle/issues)
 
 </div>
 ```
