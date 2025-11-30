@@ -1,10 +1,6 @@
-"""
-PROJECT AGERE (Agentic Recruiter)
-Main Streamlit Application
-
-Main entry point for the Agentic Recruiter application.
-Users can upload their CV/resume and interact with the AI-powered recruitment system.
-"""
+# PROJECT AGERE (Agentic Recruiter)
+# Main Streamlit Application
+# This is the entry point for the Agentic Recruiter application, allowing users to upload CVs and interact with the AI recruitment system.
 from dotenv import load_dotenv
 load_dotenv()
 import streamlit as st
@@ -17,7 +13,7 @@ import json
 from datetime import datetime
 from google.adk.runners import InMemoryRunner
 
-from src.agents import *  # Tutti gli agenti, incluso orchestrator, sono importati qui.
+from src.agents import *  # Imports all agents, including the orchestrator.
 
 
 # Explicitly set environment variables for ADK (needed for Streamlit)
@@ -36,7 +32,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Load custom CSS from external file
+# Loads custom CSS styling from an external file.
 def load_css():
     """Load custom CSS styling from external file"""
     css_file = Path(__file__).parent / "src" / "styles" / "custom.css"
@@ -45,7 +41,7 @@ def load_css():
 
 load_css()
 
-# Initialize session state for chat and agent
+# Initialize session state variables for chat and agent.
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'runner' not in st.session_state:
@@ -65,8 +61,8 @@ LOG_FILE = LOG_DIR / "runner_events.log"
 
 def log_agent_event(event):
     """
-    Log agent events by parsing nested content parts for Tools and Text.
-    Fixed: handles NoneType safely
+    Logs agent events, parsing nested content for Tools and Text.
+    Handles NoneType safely.
     """
     log_entry = {
         "timestamp": datetime.now().timestamp(),
@@ -91,7 +87,7 @@ def log_agent_event(event):
                     log_entry["output_text"] = current + part.text
                     has_content = True
 
-                # Tool Call
+                # Handles tool call logging.
                 if hasattr(part, "function_call") and getattr(part, "function_call", None):
                     log_entry["type"] = "tool_call"
                     log_entry["tool_name"] = getattr(part.function_call, "name", None)
@@ -107,7 +103,7 @@ def log_agent_event(event):
                         log_entry["input_text"] = str(getattr(part.function_call, "args", None))
                     has_content = True
 
-                # Tool Response
+                # Handles tool response logging.
                 if hasattr(part, "function_response") and getattr(part, "function_response", None):
                     log_entry["type"] = "tool_result"
                     log_entry["tool_name"] = getattr(part.function_response, "name", None)
@@ -123,7 +119,7 @@ def log_agent_event(event):
                         log_entry["output_text"] = str(getattr(part.function_response, "response", None))
                     has_content = True
 
-    # Fallback for user input
+    # Fallback for logging user input.
     if not has_content and hasattr(event, "user_content"):
         log_entry["type"] = "user_input"
         input_text = getattr(event.user_content, "text", None)
@@ -144,7 +140,7 @@ def log_agent_event(event):
 
 def extract_agent_response(events):
     """
-    Extract all text from agent events.
+    Extracts all text from agent events.
     Safely handles NoneType and missing parts.
     """
     if not events:
@@ -153,7 +149,7 @@ def extract_agent_response(events):
     full_text = []
 
     for event in events:
-        log_agent_event(event)  # sempre loggare
+        log_agent_event(event)  # Always log the event.
         content = getattr(event, 'content', None)
         parts = getattr(content, 'parts', []) if content and getattr(content, 'parts', None) else []
 
@@ -162,14 +158,14 @@ def extract_agent_response(events):
             if text:
                 full_text.append(text)
             else:
-                # Debug: parti non testuali
+                # Debug: non-textual parts detected.
                 print("DEBUG: non-text part detected", part)
 
     return "".join(full_text) if full_text else None
 
 
 async def run_agent_async(runner, prompt):
-    """Run agent and return response safely, never None"""
+    """Runs the agent asynchronously and returns its response. Never returns None."""
     if runner is None:
         return "⚠️ Error: agent runner is not initialized."
     try:
@@ -183,7 +179,7 @@ async def run_agent_async(runner, prompt):
 
 
 def run_agent_sync(runner, prompt):
-    """Synchronous wrapper for async agent calls safely"""
+    """Synchronous wrapper for asynchronous agent calls. Never returns None."""
     if runner is None:
         return "⚠️ Error: agent runner is not initialized."
     try:
@@ -197,7 +193,7 @@ def run_agent_sync(runner, prompt):
 
 
 def analyze_cv_with_runner(runner, filename):
-    """Call orchestrator agent to analyze CV safely, never returns None"""
+    """Calls the orchestrator agent to analyze a CV. Never returns None."""
     if runner is None:
         return "⚠️ Error: agent runner is not initialized."
     
@@ -219,7 +215,7 @@ Please analyze it and help me find suitable job opportunities."""
 
 @st.dialog("📊 CV Analysis & Chat", width="large")
 def show_analysis_dialog(uploaded_file):
-    """Display CV analysis and chat in a modal dialog safely"""
+    """Displays CV analysis and chat in a modal dialog."""
 
     if st.session_state.runner is None:
         st.session_state.runner = InMemoryRunner(
@@ -232,12 +228,12 @@ def show_analysis_dialog(uploaded_file):
     
     temp_file_path = temp_uploads_dir / uploaded_file.name
 
-    # Salva file solo se è nuovo
+    # Saves the file only if it's new.
     if st.session_state.current_cv_file != uploaded_file.name:
         with open(temp_file_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
 
-    # Aggiorna stato sessione solo se file nuovo
+    # Updates session state only if it's a new file.
     if st.session_state.current_cv_file != uploaded_file.name:
         st.session_state.current_cv_file = uploaded_file.name
         st.session_state.messages = []
@@ -245,7 +241,7 @@ def show_analysis_dialog(uploaded_file):
         st.subheader("🔍 Initial CV Analysis")
         st.caption(f"Analyzing: **{uploaded_file.name}** ({uploaded_file.type})")
 
-        # Chiamata agente
+        # Calls the agent for analysis.
         analysis_result = analyze_cv_with_runner(st.session_state.runner, uploaded_file.name)
 
         if analysis_result is not None:
@@ -256,7 +252,7 @@ def show_analysis_dialog(uploaded_file):
         else:
             st.warning("Analysis completed but no response was generated.")
 
-    # Mostra chat
+    # Displays chat interface.
     st.markdown("---")
     st.subheader("💬 Chat with AI Recruiter")
     st.caption(f"Currently analyzing: **{uploaded_file.name}**")
@@ -264,9 +260,9 @@ def show_analysis_dialog(uploaded_file):
     chat_container = st.container()
     input_container = st.container()
 
-    # Mostra messaggi esistenti
+    # Displays existing messages.
     with chat_container:
-        for message in st.session_state.messages or []:  # sicuro anche se None
+        for message in st.session_state.messages or []:  # Ensures safe iteration even if None.
             if not message or "role" not in message or "content" not in message:
                 continue
             if message["role"] == "user":
@@ -288,12 +284,12 @@ def show_analysis_dialog(uploaded_file):
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
 
-    # Input utente
+    # Handles user input.
     with input_container:
         prompt = st.chat_input("Ask questions about this CV or request additional analysis...")
 
     if prompt:
-        # Log user input
+        # Logs user input.
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             f.write(json.dumps({
                 "timestamp": datetime.now().timestamp(),
@@ -306,7 +302,7 @@ def show_analysis_dialog(uploaded_file):
         
         st.session_state.messages.append({"role": "user", "content": prompt})
         with chat_container:
-            # Check if message contains code (multiline or starts with def/import)
+            # Checks if message contains code for proper rendering.
             if "\n" in prompt or prompt.strip().startswith(("def ", "import ", "from ", "class ")):
                 # Render as markdown code block for proper formatting
                 with st.chat_message("user"):
@@ -347,9 +343,9 @@ def show_analysis_dialog(uploaded_file):
 
 
 def main():
-    """Main application function"""
+    """Main application function."""
     
-    # Header
+    # Header section for the application.
     st.markdown("""
         <div class="main-header">
             <h1>PROJECT AGERE</h1>
@@ -357,7 +353,7 @@ def main():
         </div>
     """, unsafe_allow_html=True)
     
-    # How it works section
+    # Section detailing how the application works.
     st.markdown("### 🚀 How it works")
     steps_col1, steps_col2, steps_col3, steps_col4 = st.columns(4)
     
@@ -395,10 +391,10 @@ def main():
     
     st.markdown("---")
     
-    # Main content area
+    # Main content area for CV upload.
     st.header("📄 Upload Resume/CV")
     
-    # File uploader
+    # File uploader widget.
     uploaded_file = st.file_uploader(
         "Drop your file here or click to upload",
         type=["pdf", "txt"],
@@ -420,7 +416,7 @@ def main():
             for key, value in file_details.items():
                 st.write(f"**{key}:** {value}")
         
-        # Action buttons
+        # Action buttons for analysis and reset.
         col_btn1, col_btn2 = st.columns(2)
         
         with col_btn1:
@@ -429,7 +425,7 @@ def main():
                 
         with col_btn2:
             if st.button("🗑️ Clear & Reset", use_container_width=True):
-                # Delete ALL files from temp_uploads folder
+                # Deletes all files from the temp_uploads folder.
                 temp_uploads_dir = Path(__file__).parent / "temp_uploads"
                 if temp_uploads_dir.exists():
                     try:
@@ -444,17 +440,17 @@ def main():
                     except Exception as e:
                         st.error(f"Could not delete files: {e}")
                 
-                # Clear session state completely
+                # Clears all relevant session state variables.
                 st.session_state.messages = []
                 st.session_state.current_cv_file = None
                 st.session_state.show_analysis = False
                 st.session_state.uploaded_file_content = None
-                # Clear the file uploader by resetting its key
+                # Clears the file uploader by resetting its key.
                 if 'cv_uploader' in st.session_state:
                     del st.session_state['cv_uploader']
                 st.rerun()
     
-    # Features Section
+    # Features section.
     st.markdown("---")
     st.subheader("✨ Features")
     
@@ -487,7 +483,7 @@ def main():
             </div>
         """, unsafe_allow_html=True)
 
-    # Footer
+    # Footer section.
     st.markdown("""
         <div class="footer">
             <p>🤖 PROJECT AGERE - Agentic Recruiter | Powered by Google Vertex AI</p>

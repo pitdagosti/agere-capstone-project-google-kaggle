@@ -1,4 +1,4 @@
-# CUSTOM TOOLS FOR AGENTS 🔧
+# Custom tools for agents.
 from dotenv import load_dotenv
 load_dotenv()
 from pathlib import Path
@@ -17,7 +17,7 @@ import os
 import pytz
 
 
-# Try to import Context - if not available, we'll work without it
+# Try to import Context. If not available, a mock ToolContext is used for compatibility.
 try:
     from google.adk.tools import ToolContext
     CONTEXT_AVAILABLE = True
@@ -34,20 +34,20 @@ except ImportError:
 
 
 # =============================================================================
-# CUSTOM ADK FUNCTIONS
+# Custom ADK Functions
 # =============================================================================
 
-# --- CALENDAR TOOLS ---
+# --- Calendar Tools ---
 
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 import os
 
-CALENDAR_ID = os.getenv("CALENDAR_ID", "primary")  # puoi mettere il tuo calendario Gmail qui
+CALENDAR_ID = os.getenv("CALENDAR_ID", "primary")  # Set your Gmail calendar ID here.
 
 def get_calendar_service():
     """
-    Restituisce un servizio Google Calendar autenticato usando le credenziali OAuth dal .env.
+    Returns an authenticated Google Calendar service using OAuth credentials from .env.
     """
     # Check if credentials are configured
     try:
@@ -137,7 +137,7 @@ def calendar_get_busy_fn(start: str, end: str) -> str:
 
 def calendar_book_slot_fn(start: str, end: str, summary: str = "Interview", attendee_email: str = None) -> str:
     """
-    Book an event directly on Google Calendar, only for today or future dates.
+    Books an event directly on Google Calendar, only for today or future dates.
 
     Args:
         start: ISO format start datetime string with timezone
@@ -204,10 +204,8 @@ def calendar_book_slot_fn(start: str, end: str, summary: str = "Interview", atte
 def run_code_assignment(code: str, expected_output: str = None, context: Optional[object] = None) -> str:
     """
     Executes the candidate's code submission in a secure sandbox environment.
-    This tool is used by the code_assessment_agent to evaluate solutions.
-    It returns a structured string indicating success or failure.
-    
-    NEW: Supports Context for reliable output comparison!
+    Used by the code_assessment_agent to evaluate solutions. Returns a structured
+    string indicating success or failure. Supports Context for reliable output comparison.
 
     Args:
         code: The Python code string submitted by the candidate.
@@ -218,16 +216,15 @@ def run_code_assignment(code: str, expected_output: str = None, context: Optiona
     Returns:
         A string with the execution result, prefixed with '✅' for success
         or '❌' for errors, timeouts, or security violations.
-        
         If context is available and expected_output was stored:
         - Compares actual output with expected output
         - Returns detailed pass/fail message
     """
     
-    # Execute code in sandbox
+    # Execute code in sandbox.
     result = execute_code(code)
     
-    # MODE 1: Store expected output (problem generation)
+    # MODE 1: Store expected output (for problem generation).
     if expected_output is not None:
         if context:
             context.set("last_expected_output", expected_output)
@@ -243,7 +240,7 @@ def run_code_assignment(code: str, expected_output: str = None, context: Optiona
             feedback = f"❌ Execution Error:\n{result.get('error_msg', 'An unknown error occurred.')}"
         return feedback
     
-    # MODE 2: Compare with stored expected output (evaluation)
+    # MODE 2: Compare with stored expected output (for evaluation).
     if context and context.get("problem_generated"):
         expected = context.get("last_expected_output", "")
         
@@ -265,8 +262,8 @@ def run_code_assignment(code: str, expected_output: str = None, context: Optiona
         else:
             return f"❌ FAIL: Output mismatch\nExpected:\n{expected}\n\nActual:\n{actual}"
     
-    # MODE 3: Backwards compatible - no context or expected output
-    # This is the old behavior for existing code
+    # MODE 3: Backwards compatible - no context or expected output.
+    # This is the old behavior for existing code.
     if result["status"] == "success":
         feedback = f"✅ Code executed successfully!\nOutput:\n{result['output']}"
     elif result["status"] == "timeout":
@@ -281,28 +278,28 @@ def run_code_assignment(code: str, expected_output: str = None, context: Optiona
 
 def present_coding_problem_fn(job_title: str = "default", context: Optional[object] = None) -> str:
     """
-    Present a coding problem from templates based on job category.
+    Presents a coding problem from templates based on job category.
     Automatically stores expected output for later evaluation.
     
     Args:
-        job_title: The job title to determine appropriate problem
-        context: ToolContext for storing expected output
+        job_title: The job title to determine the appropriate problem.
+        context: ToolContext for storing expected output.
         
     Returns:
-        Formatted problem statement with test cases and instructions
+        Formatted problem statement with test cases and instructions.
     """
-    # Import here to avoid circular dependency
+    # Import here to avoid circular dependency.
     from ..agents.agents import get_coding_problem
     
-    # Get the appropriate problem
+    # Get the appropriate problem.
     problem = get_coding_problem(job_title)
     
-    # Store the expected output in context for later comparison
+    # Store the expected output in context for later comparison.
     if context:
         context.set("last_expected_output", problem['expected_output'])
         context.set("problem_generated", True)
     
-    # Format the problem for display
+    # Format the problem for display.
     formatted_problem = f"""**Coding Assessment: {problem['title']}**
 
 **Problem Description:**
@@ -326,10 +323,10 @@ def present_coding_problem_fn(job_title: str = "default", context: Optional[obje
 
 def read_cv_fn(filename: str) -> str:
     """
-    Read a CV file that has been uploaded for analysis.
+    Reads a CV file that has been uploaded for analysis.
     
     Args:
-        filename: Name of the CV file to read and analyze (supports .txt and .pdf formats)
+        filename: Name of the CV file to read and analyze (supports .txt and .pdf formats).
     
     Returns:
         A readable text output of the CV content.
@@ -371,7 +368,7 @@ def read_cv_fn(filename: str) -> str:
 
 def list_available_cvs_fn() -> str:
     """
-    List all available CV files in dummy_files_for_testing folder.
+    Lists all available CV files in the dummy_files_for_testing folder.
     """
     base_path = Path(__file__).parent.parent.parent / "dummy_files_for_testing"
     
@@ -404,12 +401,12 @@ def compare_candidates_fn(
     criteria: str
 ) -> str:
     """
-    Compare two candidate CVs based on specific criteria.
+    Compares two candidate CVs based on specific criteria.
     
     Args:
-        filename1: First CV filename
-        filename2: Second CV filename
-        criteria: Comparison criteria (e.g., 'Python experience')
+        filename1: First CV filename.
+        filename2: Second CV filename.
+        criteria: Comparison criteria (e.g., 'Python experience').
     
     Returns:
         A comparison of both candidates based on the specified criteria.
@@ -431,7 +428,7 @@ Please compare these candidates specifically on: {criteria}
 
 def list_jobs_from_db(cv_summary: str = None, max_results: int = 5) -> str:
     """
-    List jobs from SQLite DB, ranked by skills match. Returns numbered list for selection.
+    Lists jobs from SQLite DB, ranked by skills match. Returns a numbered list for selection.
     """
     try:
         conn = sqlite3.connect("jobs/jobs.db")
@@ -489,12 +486,12 @@ def list_jobs_from_db(cv_summary: str = None, max_results: int = 5) -> str:
 
 
 # =============================================================================
-# HELPER FUNCTIONS
+# Helper Functions
 # =============================================================================
 
 def read_cv_file(file_path: Union[str, Path]) -> str:
     """
-    Helper function to read CV file (not an ADK tool)
+    Helper function to read a CV file (not an ADK tool).
     """
     file_path = Path(file_path)
     
@@ -521,7 +518,7 @@ def read_cv_file(file_path: Union[str, Path]) -> str:
 
 def load_all_cvs(folder_path: Union[str, Path] = "dummy_files_for_testing") -> Dict[str, str]:
     """
-    Helper function to load all CVs from a folder
+    Helper function to load all CVs from a folder.
     """
     folder = Path(folder_path)
     cvs = {}

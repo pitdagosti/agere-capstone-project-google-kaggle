@@ -24,30 +24,25 @@ from src.tools import (
     problem_presenter_tool,
 )
 
-# Load environment variables
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
 
 
 # ============================================================================
-# PRE-PROGRAMMED CODING PROBLEMS
+# Pre-programmed Coding Problems
 # ============================================================================
 
 def get_coding_problem(job_title: str = "default") -> dict:
     """
-    Returns a pre-programmed coding problem based on job category.
-    These are simple, well-tested problems that work in the sandbox.
+    Returns a pre-programmed coding problem based on the job category.
+    These are simple, well-tested problems suitable for the sandbox environment.
     
     Args:
-        job_title: The job title to determine which problem to use
+        job_title: The job title to determine which problem to use.
         
     Returns:
-        dict with 'title', 'description', 'test_code', 'expected_output'
+        A dictionary with 'title', 'description', 'test_code', 'expected_output'.
     """
     
-    # Handle None, empty, or non-string job_title
+    # Handle None, empty, or non-string job_title.
     if not job_title or not isinstance(job_title, str):
         job_title = "default"
     
@@ -186,7 +181,7 @@ print(calculate_stats([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))''',
 print("✅ ADK components imported successfully.")
 print("✅ ADK will auto-initialize client from environment variables")
 
-# RETRY OPTIONS:
+# Retry options for API calls.
 retry_config=types.HttpRetryOptions(
     attempts=5,  # Maximum retry attempts
     exp_base=7,  # Delay multiplier
@@ -194,11 +189,11 @@ retry_config=types.HttpRetryOptions(
     http_status_codes=[429, 500, 503, 504] # Retry on these HTTP errors
 )
 
-# Agents Definition
+# Agent Definitions
 # ADK will automatically read GOOGLE_API_KEY and GOOGLE_GENAI_USE_VERTEXAI
-# from environment variables - no need to create Client explicitly!
+# from environment variables.
 
-# TODO: AGENT TO SCREEN THE RESUME AND CHECK IF IT MATCHES THE JOB DESCRIPTION
+# Agent for CV analysis and insights.
 CV_analysis_agent = Agent(
     name="CV_analysis_agent",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
@@ -249,7 +244,7 @@ CV_analysis_agent = Agent(
     - Professional evaluation
     - Recommendations for roles/positions
     - Any gaps or areas for improvement
-
+    
     **8. Output**
     - Return a JSON object with keys: full_name, skills, experience, education
     
@@ -276,10 +271,7 @@ CV_analysis_agent = Agent(
 
 print("✅ Root Agent defined with custom CV tools.")
 
-# TODO: AGENT TO MATCH THE CANDIDATE TO THE JOB DESCRIPTION
-# This agent shuold provide N (say 5) suggestions of jobs that the candidate is a good fit for
-# Funzione per leggere i job locali
-
+# Agent to match candidates to job descriptions.
 job_listing_agent = Agent(
     name="job_listing_agent",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
@@ -295,14 +287,7 @@ job_listing_agent = Agent(
 
 print("✅ job_listing_agent defined.")
 
-# TODO: AGENT TO CREATE AN ASSESSMENT FOR THE CANDIDATE (CODE INTERVIEW)
-# This agent shuold create a code interview assessment for the candidate. 
-# The assessment should be written in the language mentioned in the uploaded CV.
-# The assessment shuould be ran in a sandbox environment. 
-# Provide assessment evaluation and feedback to the candidate.
-
-# --- AGENT ---
-
+# Agent for creating and evaluating code interview assessments.
 code_assessment_agent = Agent(
     name="code_assessment_agent",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
@@ -329,7 +314,7 @@ You: pass""",
     tools=[code_execution_tool]
 )
 
-# Problem Presenter Agent (Shows pre-programmed problems)
+# Problem Presenter Agent (Shows pre-programmed problems).
 problem_presenter_agent = Agent(
     name="problem_presenter_agent",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
@@ -340,7 +325,7 @@ DO NOT add commentary. Just call the tool and show its output.""",
     tools=[problem_presenter_tool]
 )
 
-# Language Assessment Agent
+# Language Assessment Agent.
 language_assessment_agent = Agent(
     name="language_assessment_agent",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
@@ -370,7 +355,7 @@ language_assessment_agent = Agent(
       * German (C1): "Bitte erläutern Sie, wie Sie mit technischen Herausforderungen in Ihrem letzten Projekt umgegangen sind."
         (Please explain how you dealt with technical challenges in your last project.)
       
-      * French (B2): "Pouvez-vous décrire un projet récent sur lequel vous avez travaillé et quel était votre rôle?"
+      * French (B2): "Pouvez-vous décrire un proyecto reciente sur lequel vous avez travaillé et quel était votre rôle?"
         (Can you describe a recent project you worked on and what was your role?)
     
     - After generating the prompt, clearly state:
@@ -405,15 +390,11 @@ language_assessment_agent = Agent(
     tools=[]  # No tools needed for language assessment
 )
 
-# TODO: AGENT TO SCHEDULE THE CANDIDATE FOR THE LIVE INTERVIEW
-# If the candidate is a good fit, the agent should schedule a live interview for the candidate.
-# PitDagosti's tool leveraging google calendar API should be used to schedule the interview.
-
-# Scheduler Agent aggiornato
+# Agent for scheduling live interviews.
 scheduler_agent = Agent(
     name="scheduler_agent",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
-    description="Agent that schedules interviews using Google Calendar, robust token handling.",
+    description="Agent that schedules interviews using Google Calendar, with robust token handling.",
     instruction="""
     You schedule interviews only AFTER receiving 'assignment_result: pass'.
 
@@ -446,8 +427,7 @@ scheduler_agent = Agent(
 )
 
 
-# --- ORCHESTRATOR AGENT ---
-
+# Orchestrator Agent.
 orchestrator = LlmAgent(
     name="manager",
     model=Gemini(model="gemini-2.5-flash-lite", retry_options=retry_config),
@@ -576,9 +556,3 @@ CRITICAL RULES:
         AgentTool(scheduler_agent),
     ],
 )
-
-
-
-
-# ‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️‼️
-# Make sure to add necessary tools to src/tools/tools.py and update respective __init__.py files.
