@@ -218,7 +218,7 @@ We welcome community contributions!
 
 *Prepare faster, practice smarter, and approach every interview with confidence.*
 
-[📖 Documentation](https://github.com/pitdagosti/capstone-project-google-kaggle/edit/main/README.md) • [🐛 Report Bug](https://github.com/pitdagosti/capstone-project-google-kaggle/issues) • [💡 Request Feature](https://github.com/pitdagosti/capstone-project-google-kaggle/issues)
+[📖 Documentation](https://github.com/pitdagosti/capstone-project-google-kaggle/main/README.md) • [🐛 Report Bug](https://github.com/pitdagosti/capstone-project-google-kaggle/issues) • [💡 Request Feature](https://github.com/pitdagosti/capstone-project-google-kaggle/issues)
 
 </div>
 ```
