@@ -5,6 +5,20 @@ import contextlib
 import time
 import traceback
 import re
+import platform
+
+# Set the multiprocessing start method for better compatibility
+# This prevents issues with Streamlit and macOS/Linux
+# Windows only supports 'spawn', Unix systems can use 'fork'
+if __name__ != '__main__':
+    try:
+        if platform.system() in ('Darwin', 'Linux'):
+            # macOS and Linux: use 'fork' for better performance and Streamlit compatibility
+            multiprocessing.set_start_method('fork', force=True)
+        # Windows will use its default 'spawn' method
+    except RuntimeError:
+        # Already set, ignore
+        pass
 
 # --- Resource limiting (Unix-based systems only) ---
 try:
@@ -26,9 +40,14 @@ def _unsafe_execute(code, return_dict, memory_limit_mb):
     
     # --- Set Resource Limits (if on Unix) ---
     if IS_UNIX:
-        # Set memory limit (in bytes)
-        memory_bytes = memory_limit_mb * 1024 * 1024
-        resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
+        try:
+            # Set memory limit (in bytes)
+            memory_bytes = memory_limit_mb * 1024 * 1024
+            resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
+        except (ValueError, OSError) as e:
+            # On macOS, setrlimit may fail with "current limit exceeds maximum limit"
+            # This is a known issue on macOS - we'll rely on the timeout mechanism instead
+            pass
         
         # CPU time limit is an additional safeguard against complex computations
         # that aren't simple infinite loops. The p.join() timeout is still the primary guard.
@@ -46,7 +65,8 @@ def _unsafe_execute(code, return_dict, memory_limit_mb):
                 "min": min, "max": max, "abs": abs, "round": round,
                 "int": int, "str": str, "list": list, "dict": dict, 
                 "tuple": tuple, "set": set, "float": float, "bool": bool,
-                "sorted": sorted, "enumerate": enumerate, "zip": zip
+                "sorted": sorted, "enumerate": enumerate, "zip": zip,
+                "reversed": reversed  # Added for common algorithmic patterns
             }
             safe_globals = {"__builtins__": safe_builtins}
             exec(code, safe_globals)
@@ -58,7 +78,7 @@ def _unsafe_execute(code, return_dict, memory_limit_mb):
         return_dict["output"] = output_capture.getvalue()
         return_dict["status"] = "memory_error"
         return_dict["error_msg"] = f"Memory usage exceeded the limit of {memory_limit_mb}MB."
-    except Exception:
+    except Exception as e:
         return_dict["output"] = output_capture.getvalue()
         return_dict["status"] = "error"
         return_dict["error_msg"] = traceback.format_exc()
@@ -78,7 +98,7 @@ def execute_code(code_string: str, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> di
     
     # 1. Improved Security Scan (static check for obvious malicious keywords)
     # This is a fast-path rejection. The primary security comes from the restricted __builtins__.
-    forbidden_keywords = ["import", "os", "sys", "subprocess", "open", "input", "eval", "exec"]
+    forbidden_keywords = ["import", "os", "sys", "subprocess", "open", "input", "eval", "exec", "compile", "__"]
     # Use regex to find whole words to avoid false positives on variable names
     for keyword in forbidden_keywords:
         if re.search(r'\b' + keyword + r'\b', code_string):

@@ -5,19 +5,20 @@ Main Streamlit Application
 Main entry point for the Agentic Recruiter application.
 Users can upload their CV/resume and interact with the AI-powered recruitment system.
 """
-
+from dotenv import load_dotenv
+load_dotenv()
 import streamlit as st
 import os
 import asyncio
 import html
-from dotenv import load_dotenv
+
 from pathlib import Path
 import json
 from datetime import datetime
 from google.adk.runners import InMemoryRunner
 
 from src.agents import *  # Tutti gli agenti, incluso orchestrator, sono importati qui.
-load_dotenv()
+
 
 # Explicitly set environment variables for ADK (needed for Streamlit)
 api_key = os.getenv("GOOGLE_API_KEY")
@@ -269,12 +270,20 @@ def show_analysis_dialog(uploaded_file):
             if not message or "role" not in message or "content" not in message:
                 continue
             if message["role"] == "user":
-                st.markdown(
-                    f"""<div class="user-message-container">
-<div class="user-message-bubble">{html.escape(message["content"])}</div>
+                # Check if message contains code (multiline or starts with def/import)
+                content = message["content"]
+                if "\n" in content or content.strip().startswith(("def ", "import ", "from ", "class ")):
+                    # Render as markdown code block for proper formatting
+                    with st.chat_message("user"):
+                        st.code(content, language="python")
+                else:
+                    # Regular text message with HTML escape
+                    st.markdown(
+                        f"""<div class="user-message-container">
+<div class="user-message-bubble">{html.escape(content)}</div>
 </div>""",
-                    unsafe_allow_html=True
-                )
+                        unsafe_allow_html=True
+                    )
             else:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
@@ -284,14 +293,32 @@ def show_analysis_dialog(uploaded_file):
         prompt = st.chat_input("Ask questions about this CV or request additional analysis...")
 
     if prompt:
+        # Log user input
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "timestamp": datetime.now().timestamp(),
+                "agent_name": "User",
+                "tool_name": None,
+                "input_text": prompt,
+                "output_text": None,
+                "type": "user_input"
+            }, ensure_ascii=False) + "\n")
+        
         st.session_state.messages.append({"role": "user", "content": prompt})
         with chat_container:
-            st.markdown(
-                f"""<div class="user-message-container">
+            # Check if message contains code (multiline or starts with def/import)
+            if "\n" in prompt or prompt.strip().startswith(("def ", "import ", "from ", "class ")):
+                # Render as markdown code block for proper formatting
+                with st.chat_message("user"):
+                    st.code(prompt, language="python")
+            else:
+                # Regular text message with HTML escape
+                st.markdown(
+                    f"""<div class="user-message-container">
 <div class="user-message-bubble">{html.escape(prompt)}</div>
 </div>""",
-                unsafe_allow_html=True
-            )
+                    unsafe_allow_html=True
+                )
 
         with chat_container:
             with st.chat_message("assistant"):
@@ -326,7 +353,7 @@ def main():
     st.markdown("""
         <div class="main-header">
             <h1>PROJECT AGERE</h1>
-            <h3>Agentic Recruiter - AI-Powered CV Analysis</h3>
+            <h3>Agentic Self Assessment Tool- AI-Powered CV Analysis</h3>
         </div>
     """, unsafe_allow_html=True)
     

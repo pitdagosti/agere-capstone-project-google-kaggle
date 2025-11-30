@@ -1,46 +1,327 @@
 # CUSTOM TOOLS FOR AGENTS 🔧
-
+from dotenv import load_dotenv
+load_dotenv()
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, Union, Optional, Any
 from google.genai import types
 from google.adk.tools import FunctionTool
 import sqlite3
 import json
-import os
 from .code_sandbox import execute_code
+from datetime import datetime, timedelta, timezone
+from dateutil import parser
+import requests
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+import os
+import pytz
+
+
+# Try to import Context - if not available, we'll work without it
+try:
+    from google.adk.tools import ToolContext
+    CONTEXT_AVAILABLE = True
+except ImportError:
+    CONTEXT_AVAILABLE = False
+    # Create a mock ToolContext for backwards compatibility
+    class ToolContext:
+        def __init__(self):
+            self._data = {}
+        def set(self, key, value):
+            self._data[key] = value
+        def get(self, key, default=None):
+            return self._data.get(key, default)
+
 
 # =============================================================================
 # CUSTOM ADK FUNCTIONS
 # =============================================================================
 
-def run_code_assignment(code: str) -> str:
+# --- CALENDAR TOOLS ---
+
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+import os
+
+CALENDAR_ID = os.getenv("CALENDAR_ID", "primary")  # puoi mettere il tuo calendario Gmail qui
+
+def get_calendar_service():
+    """
+    Restituisce un servizio Google Calendar autenticato usando le credenziali OAuth dal .env.
+    """
+    # Check if credentials are configured
+    try:
+        refresh_token = os.getenv("GOOGLE_REFRESH_TOKEN")
+        client_id = os.getenv("GOOGLE_CLIENT_ID")
+        client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+        
+        if not all([refresh_token, client_id, client_secret]):
+            raise ValueError(
+                "Google Calendar credentials not configured. "
+                "Please set GOOGLE_REFRESH_TOKEN, GOOGLE_CLIENT_ID, and GOOGLE_CLIENT_SECRET in .env file."
+            )
+        
+        creds = Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=client_id,
+            client_secret=client_secret,
+            scopes=["https://www.googleapis.com/auth/calendar"]
+        )
+
+        service = build('calendar', 'v3', credentials=creds)
+        return service
+    
+    except Exception as e:
+        print("RAW ERROR:", repr(e))
+
+
+def calendar_get_busy_fn(start: str, end: str) -> str:
+    """
+    Query busy slots directly from Google Calendar.
+    
+    Args:
+        start: ISO format datetime string with timezone (e.g., 2025-11-30T10:00:00+01:00)
+        end: ISO format datetime string with timezone
+
+    Returns:
+        JSON string with busy slots or detailed error.
+    """
+    try:
+        CALENDAR_ID = os.getenv("CALENDAR_ID")
+        if not CALENDAR_ID:
+            raise ValueError(
+                "CALENDAR_ID not configured. Please set CALENDAR_ID in your .env file."
+            )
+        
+        service = get_calendar_service()
+        events_result = service.events().list(
+            calendarId=CALENDAR_ID,
+            timeMin=start,
+            timeMax=end,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+
+        busy_slots = [
+            {
+                "start": event['start'].get('dateTime', event['start'].get('date')),
+                "end": event['end'].get('dateTime', event['end'].get('date')),
+                "summary": event.get('summary', '')
+            }
+            for event in events_result.get('items', [])
+        ]
+
+        return json.dumps({
+            "status": "success",
+            "start": start,
+            "end": end,
+            "busy_slots": busy_slots
+        }, indent=2)
+
+    except ValueError as ve:
+        return json.dumps({
+            "status": "error",
+            "type": "CALENDAR_NOT_CONFIGURED",
+            "message": str(ve)
+        }, indent=2)
+
+    except Exception as e:
+        return json.dumps({
+            "status": "error",
+            "type": "CALENDAR_API_ERROR",
+            "error_type": type(e).__name__,
+            "message": str(e)
+        }, indent=2)
+
+def calendar_book_slot_fn(start: str, end: str, summary: str = "Interview", attendee_email: str = None) -> str:
+    """
+    Book an event directly on Google Calendar, only for today or future dates.
+
+    Args:
+        start: ISO format start datetime string with timezone
+        end: ISO format end datetime string with timezone
+        summary: Event title
+        attendee_email: Optional email of the attendee
+
+    Returns:
+        JSON string with booking result or detailed error.
+    """
+    try:
+        # Ensure CALENDAR_ID is configured
+        CALENDAR_ID = os.getenv("CALENDAR_ID")
+        if not CALENDAR_ID:
+            raise ValueError("CALENDAR_ID not configured. Please set CALENDAR_ID in your .env file.")
+
+        # Convert start/end to datetime objects in Rome timezone
+        rome_tz = pytz.timezone("Europe/Rome")
+        start_dt = datetime.fromisoformat(start).astimezone(rome_tz)
+        end_dt = datetime.fromisoformat(end).astimezone(rome_tz)
+        now_dt = datetime.now(rome_tz)
+
+        if start_dt < now_dt:
+            raise ValueError(f"Cannot book in the past. Next available start datetime is after {now_dt.isoformat()}")
+
+        service = get_calendar_service()
+
+        event = {
+            "summary": summary,
+            "start": {"dateTime": start_dt.isoformat(), "timeZone": "Europe/Rome"},
+            "end": {"dateTime": end_dt.isoformat(), "timeZone": "Europe/Rome"},
+        }
+
+        if attendee_email:
+            event["attendees"] = [{"email": attendee_email}]
+
+        created_event = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
+
+        return json.dumps({
+            "status": "success",
+            "event_id": created_event.get("id"),
+            "summary": created_event.get("summary"),
+            "start": created_event['start'].get('dateTime'),
+            "end": created_event['end'].get('dateTime')
+        }, indent=2)
+
+    except ValueError as ve:
+        return json.dumps({
+            "status": "error",
+            "type": "CALENDAR_NOT_CONFIGURED" if "CALENDAR_ID" in str(ve) else "INVALID_DATE",
+            "message": str(ve)
+        }, indent=2)
+
+    except Exception as e:
+        return json.dumps({
+            "status": "error",
+            "type": "CALENDAR_BOOKING_ERROR",
+            "error_type": type(e).__name__,
+            "message": str(e)
+        }, indent=2)
+
+
+
+def run_code_assignment(code: str, expected_output: str = None, context: Optional[object] = None) -> str:
     """
     Executes the candidate's code submission in a secure sandbox environment.
     This tool is used by the code_assessment_agent to evaluate solutions.
     It returns a structured string indicating success or failure.
+    
+    NEW: Supports Context for reliable output comparison!
 
     Args:
         code: The Python code string submitted by the candidate.
+        expected_output: (Optional) If provided, stores this as the expected output in context.
+                        If not provided, retrieves expected output from context and compares.
+        context: (Optional) ToolContext for storing/retrieving expected outputs.
 
     Returns:
         A string with the execution result, prefixed with '✅' for success
         or '❌' for errors, timeouts, or security violations.
+        
+        If context is available and expected_output was stored:
+        - Compares actual output with expected output
+        - Returns detailed pass/fail message
     """
-
-    # Call the actual sandbox execution function you created
+    
+    # Execute code in sandbox
     result = execute_code(code)
-
-    # Format the dictionary output into a clean string for the agent
+    
+    # MODE 1: Store expected output (problem generation)
+    if expected_output is not None:
+        if context:
+            context.set("last_expected_output", expected_output)
+            context.set("problem_generated", True)
+        # Return normal execution result
+        if result["status"] == "success":
+            feedback = f"✅ Expected output stored successfully!"
+        elif result["status"] == "timeout":
+            feedback = f"❌ Timeout Error: {result.get('error_msg', 'Execution timed out.')}"
+        elif result["status"] == "security_violation":
+             feedback = f"❌ Security Error: {result.get('error_msg', 'A security violation was detected.')}"
+        else:
+            feedback = f"❌ Execution Error:\n{result.get('error_msg', 'An unknown error occurred.')}"
+        return feedback
+    
+    # MODE 2: Compare with stored expected output (evaluation)
+    if context and context.get("problem_generated"):
+        expected = context.get("last_expected_output", "")
+        
+        # First check if execution succeeded
+        if result["status"] != "success":
+            if result["status"] == "timeout":
+                return f"❌ FAIL: Timeout Error - {result.get('error_msg', 'Execution timed out.')}"
+            elif result["status"] == "security_violation":
+                return f"❌ FAIL: Security Error - {result.get('error_msg', 'A security violation was detected.')}"
+            else:
+                return f"❌ FAIL: Execution Error - {result.get('error_msg', 'An unknown error occurred.')}"
+        
+        # Execution succeeded - compare outputs
+        actual = result['output'].strip()
+        expected = expected.strip()
+        
+        if actual == expected:
+            return f"✅ PASS: Code executed successfully and output matches expected!\nOutput:\n{actual}"
+        else:
+            return f"❌ FAIL: Output mismatch\nExpected:\n{expected}\n\nActual:\n{actual}"
+    
+    # MODE 3: Backwards compatible - no context or expected output
+    # This is the old behavior for existing code
     if result["status"] == "success":
         feedback = f"✅ Code executed successfully!\nOutput:\n{result['output']}"
     elif result["status"] == "timeout":
         feedback = f"❌ Timeout Error: {result.get('error_msg', 'Execution timed out.')}"
     elif result["status"] == "security_violation":
          feedback = f"❌ Security Error: {result.get('error_msg', 'A security violation was detected.')}"
-    else: # Covers 'error', 'memory_error', etc.
+    else:
         feedback = f"❌ Execution Error:\n{result.get('error_msg', 'An unknown error occurred.')}"
-
+    
     return feedback
+
+
+def present_coding_problem_fn(job_title: str = "default", context: Optional[object] = None) -> str:
+    """
+    Present a coding problem from templates based on job category.
+    Automatically stores expected output for later evaluation.
+    
+    Args:
+        job_title: The job title to determine appropriate problem
+        context: ToolContext for storing expected output
+        
+    Returns:
+        Formatted problem statement with test cases and instructions
+    """
+    # Import here to avoid circular dependency
+    from ..agents.agents import get_coding_problem
+    
+    # Get the appropriate problem
+    problem = get_coding_problem(job_title)
+    
+    # Store the expected output in context for later comparison
+    if context:
+        context.set("last_expected_output", problem['expected_output'])
+        context.set("problem_generated", True)
+    
+    # Format the problem for display
+    formatted_problem = f"""**Coding Assessment: {problem['title']}**
+
+**Problem Description:**
+{problem['description']}
+
+**Test Cases:**
+```python
+{problem['test_code']}
+```
+
+**Instructions:**
+- Write your solution function
+- Include the test cases at the end of your code
+- DO NOT use import statements
+- Only use built-in functions: print, range, len, sum, min, max, abs, round, int, str, list, dict, tuple, set, float, bool, sorted, enumerate, zip, reversed
+
+**Please submit your complete code (function + test cases).**"""
+
+    return formatted_problem
 
 
 def read_cv_fn(filename: str) -> str:
@@ -266,3 +547,6 @@ list_available_cvs = FunctionTool(func=list_available_cvs_fn)
 compare_candidates = FunctionTool(func=compare_candidates_fn)
 job_listing_tool = FunctionTool(func=list_jobs_from_db)
 code_execution_tool = FunctionTool(func=run_code_assignment)
+problem_presenter_tool = FunctionTool(func=present_coding_problem_fn)
+calendar_get_busy = FunctionTool(func=calendar_get_busy_fn)
+calendar_book_slot = FunctionTool(func=calendar_book_slot_fn)
